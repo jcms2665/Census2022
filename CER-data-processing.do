@@ -29,13 +29,15 @@ GNU General Public License for more details.
 
 */
 
-local where "/Users/ben/Documents/Work"
-local proot "`where'/Projects/ESRC-Transformative-Census2022"
-local rfiles "`proot'/results/CER-Irish-SM-Trial"
+global where "/Users/ben/Documents/Work"
+global proot "$where/Projects/ESRC-Transformative-Census2022"
+global rfiles "$proot/results/CER-Irish-SM-Trial"
 * original files
-local odfiles "`where'/Data/Social Science Datatsets/CER Smart Metering Project"
+global odfiles "$where/Data/Social Science Datatsets/CER Smart Metering Project"
 * processed files
-local pdfiles "`proot'/data/cer"
+global pdfiles "$proot/data/cer"
+
+global version "v1"
 
 set more off
 
@@ -43,14 +45,14 @@ clear all
 
 capture log close
 
-log using "`rfiles'/CER-data-processing.smcl", replace
+log using "$rfiles/CER-data-processing.smcl", replace
 
 timer clear
 
 timer on 1
 
 * start with the pre-trial survey
-use "`odfiles'/data/Smart meters Residential pre-trial survey data.dta"
+use "$odfiles/data/processed/Smart meters Residential pre-trial survey data.dta"
 
 * test age, sex, employment status of chief income earner
 lab def Question200PLEASERECORDSEXF 1 "Male" 2 "Female"
@@ -74,21 +76,118 @@ lab def Question420Howmanypeopleove 1 "1" 2 "2" 3 "3" 4 "4" 5 "5" 6 "6" 7 "7+"
 lab val Question420Howmanypeopleove Question420Howmanypeopleove
 tab Question420Howmanypeopleove
 
+destring Question43111Howmanypeopleu, replace force
 lab def Question43111Howmanypeopleu 1 "1" 2 "2" 3 "3" 4 "4" 5 "5" 6 "6" 7 "7+" 8 "0"
 lab val Question43111Howmanypeopleu Question43111Howmanypeopleu
 tab Question43111Howmanypeopleu
 
+save "$pdfiles/Smart meters Residential pre-trial survey data-$version.dta", replace
+
 * look at Sharon's daily summaries for weekdays
 * this one has spaces as delimiter
-insheet using "`pdfiles'/October 2009 summaries/CER_OctHH_midwk_long.txt", delim(" ") clear
+insheet using "$pdfiles/October 2009 summaries/CER_OctHH_midwk_long.txt", delim(" ") clear
 compress
-save "`pdfiles'/October 2009 summaries/CER_OctHH_midwk_long.dta", replace
+save "$pdfiles/October 2009 summaries/CER_OctHH_midwk_long.dta", replace
 
 * this one has tabs!
-insheet using "`pdfiles'/October 2009 summaries/CER_OctHH_wkend_long.txt", tab clear
+insheet using "$pdfiles/October 2009 summaries/CER_OctHH_wkend_long.txt", tab clear
 compress
-save "`pdfiles'/October 2009 summaries/CER_OctHH_wkend_long.dta", replace
+save "$pdfiles/October 2009 summaries/CER_OctHH_wkend_long.dta", replace
 
+* load in the two cluster files, merge and save
+insheet using "$pdfiles/October 2009 summaries/OctHH_wkend_clusterID.txt", tab clear
+rename fitcluster wkend_fitcluster
+rename id ID
+compress
+save "$pdfiles/October 2009 summaries/OctHH_wkend_clusterID.dta", replace
+
+insheet using "$pdfiles/October 2009 summaries/OctHH_midwk_clusterID.txt", tab clear
+rename fitcluster midwk_fitcluster
+rename id ID
+compress
+save "$pdfiles/October 2009 summaries/OctHH_midwk_clusterID.dta", replace
+
+merge 1:1 ID using "$pdfiles/October 2009 summaries/OctHH_wkend_clusterID.dta", nogen
+
+* overlap between clusters?
+tab wkend_fitcluster midwk_fitcluster 
+
+save "$pdfiles/October 2009 summaries/OctHH_clusterIDs.dta", replace
+
+merge 1:1 ID using "$pdfiles/Smart meters Residential pre-trial survey data-$version.dta"
+
+* so 746 households don't match to the Oct 2009 sample leaving us with 3,486
+gen oct_sample = 0
+replace oct_sample = 1 if _merge == 3
+
+save "$pdfiles/Smart meters Residential pre-trial survey data-$version.dta", replace
+
+insheet using "$pdfiles/CER_OctHH_data/CER_OctHH_mdwk_30min.txt", tab clear
+li in 1/5
+* the columns are munched
+drop id
+rename ds ID
+lab var ID "ID"
+rename kw timestamp
+lab var timestamp "timestamp (original format)"
+rename dateoct kwh
+lab var kwh "kWh"
+rename v5 date
+lab var date "date (original format)"
+li in 1/5
+* need to weed out the October 2010 cases
+keep if date < 365
+
+tostring timestamp, gen(tmp_timestamp) force
+
+gen halfhour = substr(tmp_timestamp,4,5)
+
+tab date
+
+
+* how many households do we have in this sample?
+* should be same as from the clustering
+preserve
+	collapse (mean) kwh , by(ID)
+	desc
+restore
+
+gen midweek = 1
+save "$pdfiles/CER_OctHH_data/CER_Oct2009HH_mdwk_30min.dta", replace
+
+insheet using "$pdfiles/CER_OctHH_data/CER_OctHH_wkend_30min.txt", tab clear
+li in 1/5
+* the columns are munched again
+drop id
+rename ds ID
+lab var ID "ID"
+rename kw timestamp
+lab var timestamp "timestamp (original format)"
+rename dateoct kwh
+lab var kwh "kWh"
+rename v5 date
+lab var date "date (original format)"
+li in 1/5
+* need to weed out the October 2010 cases
+keep if date < 365
+
+tostring timestamp, gen(tmp_timestamp) force
+
+gen halfhour = substr(tmp_timestamp,4,5)
+gen midweek = 0
+save "$pdfiles/CER_OctHH_data/CER_Oct2009HH_wkend_30min.dta", replace
+
+append using "$pdfiles/CER_OctHH_data/CER_Oct2009HH_mdwk_30min.dta"
+
+merge m:1 ID using "$pdfiles/October 2009 summaries/OctHH_clusterIDs.dta"
+
+sort ID timestamp
+
+* midweek profles for midweek clusters
+table halfhour midwk_fitcluster if midweek == 1, c(mean kwh)
+
+* weekend profles for weekend clusters
+table halfhour midwk_fitcluster if midweek == 0, c(mean kwh)
 
 
 timer off 1
