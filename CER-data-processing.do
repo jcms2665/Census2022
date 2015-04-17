@@ -80,6 +80,15 @@ lab def Question43111Howmanypeopleu 1 "1" 2 "2" 3 "3" 4 "4" 5 "5" 6 "6" 7 "7+" 8
 lab val Question43111Howmanypeopleu Question43111Howmanypeopleu
 tab Question43111Howmanypeopleu
 
+recode Question43111Howmanypeopleu (1=1) (2=2) (3/max=3), gen(ba_nchildren)
+lab def ba_nchildren 0 "0" 1 "1" 2 "2" 3 "3+"
+lab val ba_nchildren ba_nchildren
+replace ba_nchildren = 0 if Question43111Howmanypeopleu == . & Question420Howmanypeopleove != .
+
+recode Question310Whatistheemploym (1/3=1) (4/5=2) (6=3) (7=4), gen(ba_empl)
+lab def ba_empl 1 "In work" 2 "Unemployed" 3 "Retired" 4 "Caring for relative or family"
+lab val ba_empl ba_empl
+
 save "$pdfiles/Smart meters Residential pre-trial survey data-$version.dta", replace
 
 ************************************
@@ -193,17 +202,11 @@ merge m:1 ID using "$pdfiles/October 2009 summaries/OctHH_clusterIDs.dta", gen(_
 
 * add the survey data (makes big file) but only keep what we need
 merge m:1 ID using "$pdfiles/Smart meters Residential pre-trial survey data-$version.dta", gen(_m_survey) ///
-	keepusing(Question200PLEASERECORDSEXF Question300MayIaskwhatage Question310Whatistheemploym Question410Whatbestdescribes Question420Howmanypeopleove Question43111Howmanypeopleu)
+	keepusing(ba* Question200PLEASERECORDSEXF Question300MayIaskwhatage Question310Whatistheemploym Question410Whatbestdescribes Question420Howmanypeopleove Question43111Howmanypeopleu)
 
 sort ID timestamp
 
 save "$pdfiles/CER_OctHH_data/CER_Oct2009HH_30min_survey.dta", replace
-
-* midweek profles for midweek clusters
-table halfhour midwk_fitcluster if midweek == 1, c(mean kwh)
-
-* weekend profles for weekend clusters
-table halfhour midwk_fitcluster if midweek == 0, c(mean kwh)
 
 
 timer off 1
