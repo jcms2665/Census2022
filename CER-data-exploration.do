@@ -57,18 +57,13 @@ timer on 1
 * start with the survey
 use "$pdfiles/Smart meters Residential pre-trial survey data-$version.dta", clear
 
-* sinmle table
+* simple table
 tab Question420Howmanypeopleove, mi
 tab Question43111Howmanypeopleu, mi
 tab Question401SOCIALCLASSInterv, mi
 tab Question300MayIaskwhatage, mi
 tab Question310Whatistheemploym, mi
 tab Question401SOCIALCLASSInterv, mi
-
-recode Question43111Howmanypeopleu (1=1) (2=2) (3/max=3), gen(ba_nchildren)
-lab def ba_nchildren 0 "0" 1 "1" 2 "2" 3 "3+"
-lab val ba_nchildren ba_nchildren
-replace ba_nchildren = 0 if Question43111Howmanypeopleu == . & Question420Howmanypeopleove != .
 
 tab ba_nchildren Question43111Howmanypeopleu, mi
 
@@ -82,6 +77,9 @@ preserve
 	su Question420Howmanypeopleove Question43111Howmanypeopleu Question300MayIaskwhatage
 	* actually it has more as there are more missing - presumably monitoring data without surveys	
 	
+	recode Question310Whatistheemploym (1/3=1) (4/5=2) (6=3) (7=4), gen(ba_empl)
+	*lab def  ba_empl 1 "In work" 2 "Unemployed" 3 "Retired" 4 "Caring for relative or family"
+	tab ba_empl
 	* cluster overlap?
 	lab var wkend_fitcluster "Weekend clusters"
 	lab var midwk_fitcluster "Mid-week clusters"
@@ -98,10 +96,8 @@ tab ba_nchildren Question43111Howmanypeopleu, mi
 * simple tables
 * by children
 bysort midweek: table halfhour ba_nchildren, c(mean kwh)
-* by employment status
-bysort midweek: table halfhour Question310Whatistheemploym, c(mean kwh)
-
-stop
+* by recoded employment status
+bysort midweek: table halfhour ba_empl, c(mean kwh)
 
 * midweek profles for midweek clusters
 table halfhour midwk_fitcluster if midweek == 1, c(mean kwh)
