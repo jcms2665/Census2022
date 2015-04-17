@@ -97,12 +97,14 @@ save "$pdfiles/October 2009 summaries/CER_OctHH_wkend_long.dta", replace
 * load in the two cluster files, merge and save
 insheet using "$pdfiles/October 2009 summaries/OctHH_wkend_clusterID.txt", tab clear
 rename fitcluster wkend_fitcluster
+lab var wkend_fitcluster "Weekend clusters" 
 rename id ID
 compress
 save "$pdfiles/October 2009 summaries/OctHH_wkend_clusterID.dta", replace
 
 insheet using "$pdfiles/October 2009 summaries/OctHH_midwk_clusterID.txt", tab clear
 rename fitcluster midwk_fitcluster
+lab var midwk_fitcluster "Mid-week clusters"
 rename id ID
 compress
 save "$pdfiles/October 2009 summaries/OctHH_midwk_clusterID.dta", replace
@@ -110,7 +112,7 @@ save "$pdfiles/October 2009 summaries/OctHH_midwk_clusterID.dta", replace
 merge 1:1 ID using "$pdfiles/October 2009 summaries/OctHH_wkend_clusterID.dta", nogen
 
 * overlap between clusters?
-tab wkend_fitcluster midwk_fitcluster 
+tab wkend_fitcluster midwk_fitcluster, mi
 
 save "$pdfiles/October 2009 summaries/OctHH_clusterIDs.dta", replace
 
@@ -153,6 +155,8 @@ preserve
 restore
 
 gen midweek = 1
+lab def midweek 0 "Saturday/Sunday" 1 "Tuesday-Thursday"
+lab val midweek midweek
 save "$pdfiles/CER_OctHH_data/CER_Oct2009HH_mdwk_30min.dta", replace
 
 *******************************
@@ -177,6 +181,7 @@ tostring timestamp, gen(tmp_timestamp) force
 
 gen halfhour = substr(tmp_timestamp,4,5)
 gen midweek = 0
+lab val midweek midweek
 save "$pdfiles/CER_OctHH_data/CER_Oct2009HH_wkend_30min.dta", replace
 
 *********************************
