@@ -1,9 +1,8 @@
 /*  
 **************************************************************
-* Data Exploration for ESRC Transformative project
+* Data preparation for ESRC Transformative project
 * - Using the Commission for Energy Regulation (CER)'s Irish Smart Meter Trial data
 *   - http://www.ucd.ie/issda/data/commissionforenergyregulationcer/
-* - data explorations
 
 * This work was funded by RCUK through the ESRC's Transformative Social Science Programme via the
 * "Census 2022: Transforming Small Area Socio-Economic Indicators through 'Big Data'" Project 
@@ -83,7 +82,8 @@ tab Question43111Howmanypeopleu
 
 save "$pdfiles/Smart meters Residential pre-trial survey data-$version.dta", replace
 
-* look at Sharon's daily summaries for weekdays
+************************************
+* load in Sharon's daily summaries for weekdays (derived from the raw data)
 * this one has spaces as delimiter
 insheet using "$pdfiles/October 2009 summaries/CER_OctHH_midwk_long.txt", delim(" ") clear
 compress
@@ -155,6 +155,8 @@ restore
 gen midweek = 1
 save "$pdfiles/CER_OctHH_data/CER_Oct2009HH_mdwk_30min.dta", replace
 
+*******************************
+* load in weekends
 insheet using "$pdfiles/CER_OctHH_data/CER_OctHH_wkend_30min.txt", tab clear
 li in 1/5
 * the columns are munched again
@@ -177,11 +179,20 @@ gen halfhour = substr(tmp_timestamp,4,5)
 gen midweek = 0
 save "$pdfiles/CER_OctHH_data/CER_Oct2009HH_wkend_30min.dta", replace
 
+*********************************
+* append mid week to weekend
 append using "$pdfiles/CER_OctHH_data/CER_Oct2009HH_mdwk_30min.dta"
 
-merge m:1 ID using "$pdfiles/October 2009 summaries/OctHH_clusterIDs.dta"
+* add the clustering results
+merge m:1 ID using "$pdfiles/October 2009 summaries/OctHH_clusterIDs.dta", gen(_m_cluster)
+
+* add the survey data (makes big file) but only keep what we need
+merge m:1 ID using "$pdfiles/Smart meters Residential pre-trial survey data-$version.dta", gen(_m_survey) ///
+	keepusing(Question200PLEASERECORDSEXF Question300MayIaskwhatage Question310Whatistheemploym Question410Whatbestdescribes Question420Howmanypeopleove Question43111Howmanypeopleu)
 
 sort ID timestamp
+
+save "$pdfiles/CER_OctHH_data/CER_Oct2009HH_30min_survey.dta", replace
 
 * midweek profles for midweek clusters
 table halfhour midwk_fitcluster if midweek == 1, c(mean kwh)
