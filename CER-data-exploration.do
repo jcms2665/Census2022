@@ -65,7 +65,8 @@ tab Question300MayIaskwhatage, mi
 tab Question310Whatistheemploym, mi
 tab Question401SOCIALCLASSInterv, mi
 
-tab ba_nchildren Question43111Howmanypeopleu, mi
+tab ba_nchildren, mi
+tab ba_empl, mi
 
 * now use the half hour consumption data
 use "$pdfiles/CER_OctHH_data/CER_Oct2009HH_30min_survey.dta", clear
@@ -77,19 +78,12 @@ preserve
 	su Question420Howmanypeopleove Question43111Howmanypeopleu Question300MayIaskwhatage
 	* actually it has more as there are more missing - presumably monitoring data without surveys	
 	
-	recode Question310Whatistheemploym (1/3=1) (4/5=2) (6=3) (7=4), gen(ba_empl)
-	*lab def  ba_empl 1 "In work" 2 "Unemployed" 3 "Retired" 4 "Caring for relative or family"
 	tab ba_empl
 	* cluster overlap?
 	lab var wkend_fitcluster "Weekend clusters"
 	lab var midwk_fitcluster "Mid-week clusters"
 	tab midwk_fitcluster wkend_fitcluster, mi
 restore
-
-recode Question43111Howmanypeopleu (1=1) (2=2) (3/max=3), gen(ba_nchildren)
-lab def ba_nchildren 0 "0" 1 "1" 2 "2" 3 "3+"
-lab val ba_nchildren ba_nchildren
-replace ba_nchildren = 0 if Question43111Howmanypeopleu == . & Question420Howmanypeopleove != .
 
 tab ba_nchildren Question43111Howmanypeopleu, mi
 
