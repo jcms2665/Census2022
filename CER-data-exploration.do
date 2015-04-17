@@ -73,7 +73,7 @@ use "$pdfiles/CER_OctHH_data/CER_Oct2009HH_30min_survey.dta", clear
 
 * this may have fewer people as it is only October
 preserve
-	collapse (mean) kwh, by(ID Question200PLEASERECORDSEXF Question300MayIaskwhatage midwk_fitcluster wkend_fitcluster Question310Whatistheemploym Question410Whatbestdescribes Question420Howmanypeopleove Question43111Howmanypeopleu)
+	collapse (mean) kwh, by(ID ba_* Question200PLEASERECORDSEXF Question300MayIaskwhatage midwk_fitcluster wkend_fitcluster Question310Whatistheemploym Question410Whatbestdescribes Question420Howmanypeopleove Question43111Howmanypeopleu)
 	tab Question420Howmanypeopleove, mi
 	su Question420Howmanypeopleove Question43111Howmanypeopleu Question300MayIaskwhatage
 	* actually it has more as there are more missing - presumably monitoring data without surveys	
