@@ -63,6 +63,7 @@ tab Question43111Howmanypeopleu, mi
 tab Question401SOCIALCLASSInterv, mi
 tab Question300MayIaskwhatage, mi
 tab Question310Whatistheemploym, mi
+tab Question401SOCIALCLASSInterv, mi
 
 recode Question43111Howmanypeopleu (1=1) (2=2) (3/max=3), gen(ba_nchildren)
 lab def ba_nchildren 0 "0" 1 "1" 2 "2" 3 "3+"
@@ -94,8 +95,13 @@ replace ba_nchildren = 0 if Question43111Howmanypeopleu == . & Question420Howman
 
 tab ba_nchildren Question43111Howmanypeopleu, mi
 
-* simple table
+* simple tables
+* by children
 bysort midweek: table halfhour ba_nchildren, c(mean kwh)
+* by employment status
+bysort midweek: table halfhour Question310Whatistheemploym, c(mean kwh)
+
+stop
 
 * midweek profles for midweek clusters
 table halfhour midwk_fitcluster if midweek == 1, c(mean kwh)
