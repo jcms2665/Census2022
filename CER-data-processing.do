@@ -44,7 +44,7 @@ clear all
 
 capture log close
 
-log using "$rfiles/CER-data-processing.smcl", replace
+log using "$rfiles/CER-data-processing-$version.smcl", replace
 
 timer clear
 
