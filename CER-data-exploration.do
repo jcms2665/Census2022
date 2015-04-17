@@ -52,16 +52,56 @@ timer on 1
 
 *****
 * use the pre-created October 2010 dataset
-* see 
+* see https://github.com/dataknut/Census2022/blob/master/CER-data-processing.do
 
+* start with the survey
+use "$pdfiles/Smart meters Residential pre-trial survey data-$version.dta", clear
+
+* sinmle table
+tab Question420Howmanypeopleove, mi
+tab Question43111Howmanypeopleu, mi
+tab Question401SOCIALCLASSInterv, mi
+tab Question300MayIaskwhatage, mi
+tab Question310Whatistheemploym, mi
+
+recode Question43111Howmanypeopleu (1=1) (2=2) (3/max=3), gen(ba_nchildren)
+lab def ba_nchildren 0 "0" 1 "1" 2 "2" 3 "3+"
+lab val ba_nchildren ba_nchildren
+replace ba_nchildren = 0 if Question43111Howmanypeopleu == . & Question420Howmanypeopleove != .
+
+tab ba_nchildren Question43111Howmanypeopleu, mi
+
+* now use the half hour consumption data
 use "$pdfiles/CER_OctHH_data/CER_Oct2009HH_30min_survey.dta", clear
+
+* this may have fewer people as it is only October
+preserve
+	collapse (mean) kwh, by(ID Question200PLEASERECORDSEXF Question300MayIaskwhatage midwk_fitcluster wkend_fitcluster Question310Whatistheemploym Question410Whatbestdescribes Question420Howmanypeopleove Question43111Howmanypeopleu)
+	tab Question420Howmanypeopleove, mi
+	su Question420Howmanypeopleove Question43111Howmanypeopleu Question300MayIaskwhatage
+	* actually it has more as there are more missing - presumably monitoring data without surveys	
+	
+	* cluster overlap?
+	lab var wkend_fitcluster "Weekend clusters"
+	lab var midwk_fitcluster "Mid-week clusters"
+	tab midwk_fitcluster wkend_fitcluster, mi
+restore
+
+recode Question43111Howmanypeopleu (1=1) (2=2) (3/max=3), gen(ba_nchildren)
+lab def ba_nchildren 0 "0" 1 "1" 2 "2" 3 "3+"
+lab val ba_nchildren ba_nchildren
+replace ba_nchildren = 0 if Question43111Howmanypeopleu == . & Question420Howmanypeopleove != .
+
+tab ba_nchildren Question43111Howmanypeopleu, mi
+
+* simple table
+bysort midweek: table halfhour ba_nchildren, c(mean kwh)
 
 * midweek profles for midweek clusters
 table halfhour midwk_fitcluster if midweek == 1, c(mean kwh)
 
 * weekend profles for weekend clusters
-table halfhour midwk_fitcluster if midweek == 0, c(mean kwh)
-
+table halfhour wkend_fitcluster if midweek == 0, c(mean kwh)
 
 timer off 1
 di "Time taken:"
