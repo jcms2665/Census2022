@@ -78,12 +78,18 @@ preserve
 	su Question420Howmanypeopleove Question43111Howmanypeopleu Question300MayIaskwhatage
 	* actually it has more as there are more missing - presumably monitoring data without surveys	
 	
-	tab ba_empl
+	tab ba_empl midwk_fitcluster
+	tab ba_empl wkend_fitcluster
+	tab Question300MayIaskwhatage midwk_fitcluster
+	tab Question300MayIaskwhatage wkend_fitcluster
+	
 	* cluster overlap?
 	lab var wkend_fitcluster "Weekend clusters"
 	lab var midwk_fitcluster "Mid-week clusters"
 	tab midwk_fitcluster wkend_fitcluster, mi
 restore
+
+stop
 
 tab ba_nchildren Question43111Howmanypeopleu, mi
 
@@ -98,6 +104,8 @@ table halfhour midwk_fitcluster if midweek == 1, c(mean kwh)
 
 * weekend profles for weekend clusters
 table halfhour wkend_fitcluster if midweek == 0, c(mean kwh)
+
+* collapse to single case
 
 timer off 1
 di "Time taken:"
