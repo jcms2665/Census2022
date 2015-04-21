@@ -87,8 +87,11 @@ preserve
 	lab var wkend_fitcluster "Weekend clusters"
 	lab var midwk_fitcluster "Mid-week clusters"
 	tab midwk_fitcluster wkend_fitcluster, mi
+	
+	* can we predict membership of clusters from the survey data?
+	mlogit wkend_fitcluster i.ba_empl i.Question300MayIaskwhatage i.Question420Howmanypeopleove i.Question43111Howmanypeopleu 
+	mlogit midwk_fitcluster i.ba_empl i.Question300MayIaskwhatage i.Question420Howmanypeopleove i.Question43111Howmanypeopleu 
 restore
-
 stop
 
 tab ba_nchildren Question43111Howmanypeopleu, mi
