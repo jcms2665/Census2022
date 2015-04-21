@@ -92,12 +92,20 @@ preserve
 	tab midwk_fitcluster wkend_fitcluster, mi
 	
 	* can we predict membership of clusters from the survey data?
-	mlogit wkend_fitcluster i.ba_empl i.ba_nchildren i.ba_nadults
-	est store ml_we
-	mlogit midwk_fitcluster i.ba_empl i.ba_nchildren i.ba_nadults
-	est store ml_mw
-	estout ml_we using "$rfiles/CER-mlogit-clusters-weekend.txt", cells("b se p _star") stats(N r2_p chi2 p ll) replace
-	estout ml_mw using "$rfiles/CER-mlogit-clusters-midweek.txt", cells("b se p _star") stats(N r2_p chi2 p ll) replace
+	* run as a series of binary logits
+	* use baseoutcome = 1 as 4 turns out to be most interesting for peak demand
+	tab wkend_fitcluster, gen(wkend_fitcluster_)
+	tab midwk_fitcluster, gen(midwk_fitcluster_)
+	* 6 clusters
+	foreach c of numlist 1/6 {
+		logit wkend_fitcluster_`c' i.ba_empl i.ba_nchildren i.ba_nadults
+		est store ml_we_`c'
+		logit midwk_fitcluster_`c' i.ba_empl i.ba_nchildren i.ba_nadults
+		est store ml_mw_`c'
+	}
+	* order cells for easy graphing - hi-lo-close (b)
+	estout ml_we* using "$rfiles/CER-mlogit-clusters-weekend.txt", cells("b se p _star") stats(N r2_p chi2 p ll) replace
+	estout ml_mw* using "$rfiles/CER-mlogit-clusters-midweek.txt", cells("b se p _star") stats(N r2_p chi2 p ll) replace
 restore
 
 tab ba_nchildren Question43111Howmanypeopleu, mi
