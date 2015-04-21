@@ -61,19 +61,22 @@ use "$pdfiles/Smart meters Residential pre-trial survey data-$version.dta", clea
 tab Question420Howmanypeopleove, mi
 tab Question43111Howmanypeopleu, mi
 tab Question401SOCIALCLASSInterv, mi
+tab Question430Andhowmanyofthe, mi // typically in - only asked in relation to the 'others' in the house!
 tab Question300MayIaskwhatage, mi
 tab Question310Whatistheemploym, mi
 tab Question401SOCIALCLASSInterv, mi
 
 tab ba_nchildren, mi
+tab ba_nadults, mi
 tab ba_empl, mi
 
 * now use the half hour consumption data
+* this was created using https://github.com/dataknut/Census2022/blob/master/CER-data-processing.do
 use "$pdfiles/CER_OctHH_data/CER_Oct2009HH_30min_survey.dta", clear
 
 * this may have fewer people as it is only October
 preserve
-	collapse (mean) kwh, by(ID ba_* Question200PLEASERECORDSEXF Question300MayIaskwhatage midwk_fitcluster wkend_fitcluster Question310Whatistheemploym Question410Whatbestdescribes Question420Howmanypeopleove Question43111Howmanypeopleu)
+	collapse (mean) kwh, by(ID ba_* Question* midwk_fitcluster wkend_fitcluster)
 	tab Question420Howmanypeopleove, mi
 	su Question420Howmanypeopleove Question43111Howmanypeopleu Question300MayIaskwhatage
 	* actually it has more as there are more missing - presumably monitoring data without surveys	
@@ -89,10 +92,13 @@ preserve
 	tab midwk_fitcluster wkend_fitcluster, mi
 	
 	* can we predict membership of clusters from the survey data?
-	mlogit wkend_fitcluster i.ba_empl i.Question300MayIaskwhatage i.Question420Howmanypeopleove i.Question43111Howmanypeopleu 
-	mlogit midwk_fitcluster i.ba_empl i.Question300MayIaskwhatage i.Question420Howmanypeopleove i.Question43111Howmanypeopleu 
+	mlogit wkend_fitcluster i.ba_empl i.ba_nchildren i.ba_nadults
+	est store ml_we
+	mlogit midwk_fitcluster i.ba_empl i.ba_nchildren i.ba_nadults
+	est store ml_mw
+	estout ml_we using "$rfiles/CER-mlogit-clusters-weekend.txt", cells("b se p _star") stats(N r2_p chi2 p ll) replace
+	estout ml_mw using "$rfiles/CER-mlogit-clusters-midweek.txt", cells("b se p _star") stats(N r2_p chi2 p ll) replace
 restore
-stop
 
 tab ba_nchildren Question43111Howmanypeopleu, mi
 
