@@ -226,3 +226,4 @@ timer off 1
 di "Time taken:"
 timer list 1
 
+log close
