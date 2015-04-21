@@ -82,9 +82,12 @@ preserve
 	* actually it has more as there are more missing - presumably monitoring data without surveys	
 	
 	tab ba_empl midwk_fitcluster
+	tab ba_nadults midwk_fitcluster
+	tab ba_nchildren midwk_fitcluster
+	
 	tab ba_empl wkend_fitcluster
-	tab Question300MayIaskwhatage midwk_fitcluster
-	tab Question300MayIaskwhatage wkend_fitcluster
+	tab ba_nadults wkend_fitcluster
+	tab ba_nchildren wkend_fitcluster
 	
 	* cluster overlap?
 	lab var wkend_fitcluster "Weekend clusters"
