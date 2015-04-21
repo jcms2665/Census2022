@@ -108,15 +108,19 @@ bysort midweek: table halfhour ba_nchildren, c(mean kwh)
 * by recoded employment status
 bysort midweek: table halfhour ba_empl, c(mean kwh)
 
-* midweek profles for midweek clusters
+di "* midweek profles for midweek clusters - mean"
 table halfhour midwk_fitcluster if midweek == 1, c(mean kwh)
+di "* midweek profles for midweek clusters - sum"
+table halfhour midwk_fitcluster if midweek == 1, c(sum kwh)
 
-* weekend profles for weekend clusters
+
+di "* weekend profles for weekend clusters - mean"
 table halfhour wkend_fitcluster if midweek == 0, c(mean kwh)
-
-* collapse to single case
+di "* weekend profles for weekend clusters - sum"
+table halfhour wkend_fitcluster if midweek == 0, c(sum kwh)
 
 timer off 1
 di "Time taken:"
 timer list 1
 
+log close
