@@ -70,20 +70,31 @@ lab def Question410Whatbestdescribes 1 "I live alone" 2 "All people are aged > 1
 lab val Question410Whatbestdescribes Question410Whatbestdescribes
 tab Question410Whatbestdescribes 
 
+* n adults
+* NB this was asked if not living alone so 0 'others' = missing
 destring Question420Howmanypeopleove, replace force
 lab def Question420Howmanypeopleove 1 "1" 2 "2" 3 "3" 4 "4" 5 "5" 6 "6" 7 "7+"
 lab val Question420Howmanypeopleove Question420Howmanypeopleove
 tab Question420Howmanypeopleove
 
+recode Question420Howmanypeopleove (1=1) (2=2) (3=3) (4=4) (5/max=5), gen(ba_nadults)
+* in some cases this may have routed single persons into the 'how many people' question 
+* in which case Question420Howmanypeopleove will be missing so need to correct
+replace ba_nadults = 1 if Question410Whatbestdescribes == 1
+lab def ba_nadults 1 "1" 2 "2" 3 "3" 4 "4" 5 "5+"
+lab val ba_nadults ba_nadults
+tab ba_nadults Question420Howmanypeopleove, mi
+
+* n kids
 destring Question43111Howmanypeopleu, replace force
-lab def Question43111Howmanypeopleu 1 "1" 2 "2" 3 "3" 4 "4" 5 "5" 6 "6" 7 "7+" 8 "0"
+lab def Question43111Howmanypeopleu 1 "1" 2 "2" 3 "3" 4 "4" 5 "5" 6 "6" 7 "7+"
 lab val Question43111Howmanypeopleu Question43111Howmanypeopleu
 tab Question43111Howmanypeopleu
 
 recode Question43111Howmanypeopleu (1=1) (2=2) (3/max=3), gen(ba_nchildren)
 lab def ba_nchildren 0 "0" 1 "1" 2 "2" 3 "3+"
 lab val ba_nchildren ba_nchildren
-replace ba_nchildren = 0 if Question43111Howmanypeopleu == . & Question420Howmanypeopleove != .
+replace ba_nchildren = 0 if Question410Whatbestdescribes == 1
 
 recode Question310Whatistheemploym (1/3=1) (4/5=2) (6=3) (7=4), gen(ba_empl)
 lab def ba_empl 1 "In work" 2 "Unemployed" 3 "Retired" 4 "Caring for relative or family"
@@ -202,7 +213,7 @@ merge m:1 ID using "$pdfiles/October 2009 summaries/OctHH_clusterIDs.dta", gen(_
 
 * add the survey data (makes big file) but only keep what we need
 merge m:1 ID using "$pdfiles/Smart meters Residential pre-trial survey data-$version.dta", gen(_m_survey) ///
-	keepusing(ba* Question200PLEASERECORDSEXF Question300MayIaskwhatage Question310Whatistheemploym Question410Whatbestdescribes Question420Howmanypeopleove Question43111Howmanypeopleu)
+	keepusing(ba_* Question200PLEASERECORDSEXF Question300MayIaskwhatage Question310Whatistheemploym Question410Whatbestdescribes Question420Howmanypeopleove Question43111Howmanypeopleu)
 
 sort ID timestamp
 
