@@ -98,8 +98,6 @@ tab ba_nchildren Question410Whatbestdescribes, mi
 replace ba_nchildren = 0 if Question410Whatbestdescribes == 1 | Question410Whatbestdescribes == 2 // alone or all adults (so 0 kids)
 tab ba_nchildren Question410Whatbestdescribes, mi
 
-stop
-
 recode Question310Whatistheemploym (1/3=1) (4/5=2) (6=3) (7=4), gen(ba_empl)
 lab def ba_empl 1 "In work" 2 "Unemployed" 3 "Retired" 4 "Caring for relative or family"
 lab val ba_empl ba_empl
