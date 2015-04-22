@@ -105,17 +105,6 @@ lab val ba_empl ba_empl
 save "$pdfiles/Smart meters Residential pre-trial survey data-$version.dta", replace
 
 ************************************
-* load in Sharon's daily summaries for weekdays (derived from the raw data)
-* this one has spaces as delimiter
-insheet using "$pdfiles/October 2009 summaries/CER_OctHH_midwk_long.txt", delim(" ") clear
-compress
-save "$pdfiles/October 2009 summaries/CER_OctHH_midwk_long.dta", replace
-
-* this one has tabs!
-insheet using "$pdfiles/October 2009 summaries/CER_OctHH_wkend_long.txt", tab clear
-compress
-save "$pdfiles/October 2009 summaries/CER_OctHH_wkend_long.dta", replace
-
 * load in the two cluster files, merge and save
 insheet using "$pdfiles/October 2009 summaries/OctHH_wkend_clusterID.txt", tab clear
 rename fitcluster wkend_fitcluster
@@ -144,8 +133,43 @@ merge 1:1 ID using "$pdfiles/Smart meters Residential pre-trial survey data-$ver
 gen oct_sample = 0
 replace oct_sample = 1 if _merge == 3
 
-save "$pdfiles/Smart meters Residential pre-trial survey data-$version.dta", replace
+save "$pdfiles/Oct-2009-summaries-survey-$version.dta", replace
 
+******************************
+* load in Sharon's daily summaries for weekdays (derived from the raw data)
+* this one has spaces as delimiter
+insheet using "$pdfiles/October 2009 summaries/CER_OctHH_midwk_long.txt", delim(" ") clear
+destring ecf lf, replace force
+gen midweek = 1
+compress
+save "$pdfiles/October 2009 summaries/CER_OctHH_midwk_long.dta", replace
+
+* this one has tabs!
+insheet using "$pdfiles/October 2009 summaries/CER_OctHH_wkend_long.txt", tab clear
+destring ecf lf, replace force
+gen midweek = 0
+compress
+save "$pdfiles/October 2009 summaries/CER_OctHH_wkend_long.dta", replace
+
+* append mid-week
+append using "$pdfiles/October 2009 summaries/CER_OctHH_midwk_long.dta"
+
+rename id ID
+
+* remove the dates that are NOT October 2009 (why are they in there anyway??)
+drop if dateoct > 300
+
+* add survey & cluster data
+merge m:1 ID using "$pdfiles/Oct-2009-summaries-survey-$version.dta", gen(m_survey)
+
+* some survey respondents not in the October data, some in October data not in survey
+* keep what matches
+keep if m_survey == 3
+* save
+save "$pdfiles/Oct-2009-daily-summaries-survey-$version.dta", replace
+
+*********************
+* Switch to 1/2 hour level data
 insheet using "$pdfiles/CER_OctHH_data/CER_OctHH_mdwk_30min.txt", tab clear
 li in 1/5
 * the columns are munched
