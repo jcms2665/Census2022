@@ -51,7 +51,7 @@ timer clear
 timer on 1
 
 *****
-* use the pre-created October 2010 dataset
+* use the pre-created October 2009 dataset
 * see https://github.com/dataknut/Census2022/blob/master/CER-data-processing.do
 
 * start with the survey
@@ -69,6 +69,31 @@ tab Question401SOCIALCLASSInterv, mi
 tab ba_nchildren, mi
 tab ba_nadults, mi
 tab ba_empl, mi
+
+* switch to the daily summaries
+use "$pdfiles/Oct-2009-daily-summaries-survey-$version.dta", clear
+
+di "* check collinearity 'As a rule of thumb, a tolerance of 0.1 or less (equivalently VIF of 10 or greater)  is a cause for concern. '"
+di "* http://www.ats.ucla.edu/stat/stata/webbooks/logistic/chapter3/statalog3.htm"
+
+collin dailymax dailypktime dailybase dailymean dailysum dailyq975 ecf lf
+di "* remove those that have tolerance < 0.1"
+collin dailymax dailypktime dailybase dailymean dailyq975 ecf lf
+
+local clusters "midwk wkend"
+stop
+foreach cl of local clusters {
+	di "* Testing `cl'"
+	tab  `cl'_fitcluster, gen(`cl'_fitcluster_)
+	* 6 clusters
+	foreach n of numlist 1/6 {
+		di "* Testing `cl' (`n')"
+		* set iteration as risk of non-convergence
+		qui: logit `cl'_fitcluster_`n' dailymax dailypktime dailybase dailymean dailyq975 ecf lf, cluster(ID) iterate(1000)
+		est store `cl'_fitcluster_`n'
+	}
+	estout `cl'_fitcluster* using "$rfiles/CER-`cl'_fitcluster-profile-indicators.txt", cells("b se p _star") stats(N r2_p chi2 p ll) replace 
+}
 
 * now use the half hour consumption data
 * this was created using https://github.com/dataknut/Census2022/blob/master/CER-data-processing.do
@@ -101,12 +126,11 @@ preserve
 	tab midwk_fitcluster, gen(midwk_fitcluster_)
 	* 6 clusters
 	foreach c of numlist 1/6 {
-		logit wkend_fitcluster_`c' i.ba_empl i.ba_nchildren i.ba_nadults
+		logit wkend_fitcluster_`c' i.Question300MayIaskwhatage i.ba_empl i.ba_nchildren i.ba_nadults
 		est store ml_we_`c'
-		logit midwk_fitcluster_`c' i.ba_empl i.ba_nchildren i.ba_nadults
+		logit midwk_fitcluster_`c' i.Question300MayIaskwhatage i.ba_empl i.ba_nchildren i.ba_nadults
 		est store ml_mw_`c'
 	}
-	* order cells for easy graphing - hi-lo-close (b)
 	estout ml_we* using "$rfiles/CER-mlogit-clusters-weekend.txt", cells("b se p _star") stats(N r2_p chi2 p ll) replace
 	estout ml_mw* using "$rfiles/CER-mlogit-clusters-midweek.txt", cells("b se p _star") stats(N r2_p chi2 p ll) replace
 restore
