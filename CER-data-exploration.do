@@ -81,7 +81,6 @@ di "* remove those that have tolerance < 0.1"
 collin dailymax dailypktime dailybase dailymean dailyq975 ecf lf
 
 local clusters "midwk wkend"
-stop
 foreach cl of local clusters {
 	di "* Testing `cl'"
 	tab  `cl'_fitcluster, gen(`cl'_fitcluster_)
@@ -89,7 +88,8 @@ foreach cl of local clusters {
 	foreach n of numlist 1/6 {
 		di "* Testing `cl' (`n')"
 		* set iteration as risk of non-convergence
-		qui: logit `cl'_fitcluster_`n' dailymax dailypktime dailybase dailymean dailyq975 ecf lf, cluster(ID) iterate(1000)
+		qui: logit `cl'_fitcluster_`n' dailymax dailypktime dailybase dailymean dailyq975 ecf lf, ///
+			cluster(ID) iterate(100)
 		est store `cl'_fitcluster_`n'
 	}
 	estout `cl'_fitcluster* using "$rfiles/CER-`cl'_fitcluster-profile-indicators.txt", cells("b se p _star") stats(N r2_p chi2 p ll) replace 
