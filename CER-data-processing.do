@@ -50,9 +50,12 @@ timer clear
 
 timer on 1
 
+************************************
+************************************
 * start with the pre-trial survey
 use "$odfiles/data/processed/Smart meters Residential pre-trial survey data.dta"
 
+********
 * test age, sex, employment status of chief income earner
 lab def Question200PLEASERECORDSEXF 1 "Male" 2 "Female"
 lab val Question200PLEASERECORDSEXF Question200PLEASERECORDSEXF
@@ -70,6 +73,41 @@ lab def Question410Whatbestdescribes 1 "I live alone" 2 "All people are aged > 1
 lab val Question410Whatbestdescribes Question410Whatbestdescribes
 tab Question410Whatbestdescribes 
 
+********
+* income
+* answers to 'gross hh income'
+tab Question402Andconsideringinc, mi
+* NB 6 = refused
+
+* answers to banded income
+tab Question4021Canyoustatewhic, mi
+* NB 6 = refused
+
+* asked of non-banded (numeric) responders: weekly/montly/yearly?
+tab Question402Andconsideringinc Question403Isthatfigure, mi
+
+* before/after tax?
+* only asked of those who answered banded question
+tab Question404CanIjustdoublec
+* !
+
+* start with those who gave a number 
+* this has already been recoded to bands and we have to assune the weekly/monthly/yearly issue has already been dealt with
+destring Question402Andconsideringinc Question4021Canyoustatewhic, force replace
+* start with first income ques
+gen ba_income = Question402Andconsideringinc if Question402Andconsideringinc < 6 // 6 = missing here
+* have to ignore those who did not answer yearly as we cannot put them in the correct band
+destring Question403Isthatfigure, force replace
+replace ba_income = . if Question403Isthatfigure == 1 | Question403Isthatfigure == 2
+* then add in from banded question
+replace ba_income = Question4021Canyoustatewhic if Question4021Canyoustatewhic < 6 // 6 = missing here
+* now remove those who said 'after tax' as everyone else is 'before tax'
+replace ba_income = . if Question404CanIjustdoublec == "2"
+
+tab ba_income Question404CanIjustdoublec, mi
+tab ba_income Question403Isthatfigure, mi
+
+*********
 * n adults
 * NB this was asked if not living alone so 0 'others' = missing
 destring Question420Howmanypeopleove, replace force
@@ -85,6 +123,7 @@ lab def ba_nadults 1 "1" 2 "2" 3 "3" 4 "4" 5 "5+"
 lab val ba_nadults ba_nadults
 tab ba_nadults Question420Howmanypeopleove, mi
 
+*********
 * n kids
 destring Question43111Howmanypeopleu, replace force
 lab def Question43111Howmanypeopleu 1 "1" 2 "2" 3 "3" 4 "4" 5 "5" 6 "6" 7 "7+"
@@ -104,6 +143,7 @@ lab val ba_empl ba_empl
 
 save "$pdfiles/Smart meters Residential pre-trial survey data-$version.dta", replace
 
+************************************
 ************************************
 * load in the two cluster files, merge and save
 insheet using "$pdfiles/October 2009 summaries/OctHH_wkend_clusterID.txt", tab clear
