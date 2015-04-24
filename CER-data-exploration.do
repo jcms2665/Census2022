@@ -70,6 +70,34 @@ tab ba_nchildren, mi
 tab ba_nadults, mi
 tab ba_empl, mi
 
+* floor area
+su Question6103Whatistheapprox
+
+* max value = missing value???
+
+* in sq feet or sq metres?
+tab Question61031Isthat
+* most people answered in sq feet so keep that way
+gen ba_floorarea = Question6103Whatistheapprox if Question61031Isthat == "2"
+* 1 square metre = 10.7639104 sq feet
+replace ba_floorarea = Question6103Whatistheapprox*10.76 if Question61031Isthat == "1"
+
+su ba_floorarea, de
+
+* create income bands
+tab Question402Andconsideringinc, mi
+tab Question4021Canyoustatewhic, mi
+
+* weekly/montly/yearly?
+tab Question403Isthatfigure
+
+* before/after tax?
+tab Question404CanIjustdoublec
+
+* !
+gen ba_income = Question4021Canyoustatewhic
+replace ba_income = 1 if Question402Andconsideringinc < 15000
+
 * switch to the daily summaries
 use "$pdfiles/Oct-2009-daily-summaries-survey-$version.dta", clear
 
