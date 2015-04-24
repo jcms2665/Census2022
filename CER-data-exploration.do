@@ -70,6 +70,7 @@ tab ba_nchildren, mi
 tab ba_nadults, mi
 tab ba_empl, mi
 
+************
 * floor area
 su Question6103Whatistheapprox
 
@@ -84,19 +85,10 @@ replace ba_floorarea = Question6103Whatistheapprox*10.76 if Question61031Isthat 
 
 su ba_floorarea, de
 
-* create income bands
-tab Question402Andconsideringinc, mi
-tab Question4021Canyoustatewhic, mi
-
-* weekly/montly/yearly?
-tab Question403Isthatfigure
-
-* before/after tax?
-tab Question404CanIjustdoublec
-
-* !
-gen ba_income = Question4021Canyoustatewhic
-replace ba_income = 1 if Question402Andconsideringinc < 15000
+********
+* income
+* remember we had to leave out people who didn't answer yearly or who gave values after tax
+tab ba_income, mi
 
 * switch to the daily summaries
 use "$pdfiles/Oct-2009-daily-summaries-survey-$version.dta", clear
