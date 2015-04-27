@@ -108,6 +108,27 @@ tab ba_income Question404CanIjustdoublec, mi
 tab ba_income Question403Isthatfigure, mi
 
 *********
+* floor area
+su  Question6103Whatistheapprox, de
+* max value = 999999999 = missing value!
+
+* in sq feet or sq metres?
+* use this to filter out missing
+lab def Question61031Isthat 1 "sq m" 2 "sq feet"
+destring Question61031Isthat , force generate(ds_Question61031Isthat)
+lab val ds_Question61031Isthat Question61031Isthat
+tab ds_Question61031Isthat
+* lots  missing!
+
+* most people answered in sq feet so keep that way
+gen ba_floorarea = Question6103Whatistheapprox if ds_Question61031Isthat == 2
+* 1 square metre = 10.7639104 sq feet
+replace ba_floorarea = Question6103Whatistheapprox*10.76 if ds_Question61031Isthat == 1
+* the large numbers tend to be sq metres?
+
+tabstat Question6103Whatistheapprox  ba_floorarea, by(Question61031Isthat) s(mean n)
+
+*********
 * n adults
 * NB this was asked if not living alone so 0 'others' = missing
 destring Question420Howmanypeopleove, replace force
