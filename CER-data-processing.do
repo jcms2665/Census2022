@@ -253,6 +253,7 @@ gen halfhour = substr(tmp_timestamp,4,5)
 
 tab date
 
+* really out to fix dates properly here
 
 * how many households do we have in this sample?
 * should be same as from the clustering
@@ -264,6 +265,8 @@ restore
 gen midweek = 1
 lab def midweek 0 "Saturday/Sunday" 1 "Tuesday-Thursday"
 lab val midweek midweek
+drop tmp_timestamp
+
 save "$pdfiles/CER_OctHH_data/CER_Oct2009HH_mdwk_30min.dta", replace
 
 *******************************
