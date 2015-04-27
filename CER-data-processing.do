@@ -231,6 +231,7 @@ save "$pdfiles/Oct-2009-daily-summaries-survey-$version.dta", replace
 
 *********************
 * Switch to 1/2 hour level data
+* mid-week
 insheet using "$pdfiles/CER_OctHH_data/CER_OctHH_mdwk_30min.txt", tab clear
 li in 1/5
 * the columns are munched
@@ -292,6 +293,8 @@ tostring timestamp, gen(tmp_timestamp) force
 gen halfhour = substr(tmp_timestamp,4,5)
 gen midweek = 0
 lab val midweek midweek
+drop tmp_timestamp
+
 save "$pdfiles/CER_OctHH_data/CER_Oct2009HH_wkend_30min.dta", replace
 
 *********************************
@@ -299,7 +302,7 @@ save "$pdfiles/CER_OctHH_data/CER_Oct2009HH_wkend_30min.dta", replace
 append using "$pdfiles/CER_OctHH_data/CER_Oct2009HH_mdwk_30min.dta"
 
 * add the clustering results
-merge m:1 ID using "$pdfiles/October 2009 summaries/OctHH_clusterIDs.dta", gen(_m_cluster)
+merge m:1 ID using "$pdfiles/October 2009 summaries/OctHH_clusterIDs.dta", gen(m_cluster)
 
 * add the survey data (makes big file) but only keep what we need
 merge m:1 ID using "$pdfiles/Smart meters Residential pre-trial survey data-$version.dta", gen(_m_survey) ///
