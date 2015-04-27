@@ -34,7 +34,7 @@ global where "/Users/ben/Documents/Work"
 global proot "$where/Projects/ESRC-Transformative-Census2022"
 global rfiles "$proot/results/CER-Irish-SM-Trial"
 * original files
-global odfiles "$where/Data/Social Science Datatsets/CER Smart Metering Project"
+global odfiles "$where/Data/Social Science Datatsets/CER Smart Metering Project/data"
 * processed files
 global pdfiles "$proot/data/cer"
 
@@ -76,7 +76,10 @@ tab wkend_fitcluster midwk_fitcluster, mi
 
 save "$pdfiles/October 2009 summaries/OctHH_clusterIDs.dta", replace
 
-merge 1:1 ID using "$pdfiles/Smart meters Residential pre-trial survey data-$version.dta"
+* add in survey data created using
+* https://github.com/dataknut/Census2022/blob/master/CER-data-processing-original.do
+
+merge 1:1 ID using "$odfiles/processed/Smart meters Residential pre-trial survey data-$version.dta"
 
 * so 746 households don't match to the Oct 2009 sample leaving us with 3,486
 gen oct_sample = 0
