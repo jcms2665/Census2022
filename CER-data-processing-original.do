@@ -222,11 +222,26 @@ sort ID s_datetime
 * check
 li ID date halfhour s_* in 1/12, sep(2)
 
+* is min = 1 & if not which day does the data start?
+su date
+
 drop date ds_halfhour halfhour hour mins sec ds ts_ds
 
 compress
 
-save "$odfiles/processed/HH2009_long.dta", replace
+* test to see if missing half hours and ids
+
+xtset ID s_datetime, delta(30 minutes)
+
+* possibly
+
+* expand to all 30 seconds between the first and last obs for each hubid
+* (increases file size quite a bit)
+* , full -> imputes ALL missing periods
+* puts . into any missing var - fix that later
+tsfill
+
+save "$odfiles/processed/HH2009_long_filled.dta", replace
 
 
 timer off 1
