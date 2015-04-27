@@ -203,25 +203,30 @@ replace mins = 30 if mod(ds_halfhour,2) == 1
 gen sec = 0
 
 * set a half hour variable (sets date to 1/1/1960!)
+* this breaks for those halfhours which are within clock changes - i.e. halfhour == 49 or 50
 gen double s_halfhour = hms(hour, mins, sec)
 format s_halfhour %tc
 
 * create stata datetime
+* this breaks for those halfhours which are within clock changes - i.e. halfhour == 49 or 50
 gen double s_datetime = dhms(s_date, hour, mins, sec)
 format s_datetime %tc
 
+* do not do this - creates very big file
 * add the survey data (makes big file) but only keep what we need
-merge m:1 ID using "$odfiles/processed/Smart meters Residential pre-trial survey data-$version.dta", gen(m_survey) ///
-	keepusing(ba_*)
+* merge m:1 ID using "$odfiles/processed/Smart meters Residential pre-trial survey data-$version.dta", gen(m_survey) ///
+*	keepusing(ba_*)
 
 sort ID s_datetime
 
 * check
 li ID date halfhour s_* in 1/12, sep(2)
 
-drop timestamp date ds_halfhour halfhour hour mins sec
+drop date ds_halfhour halfhour hour mins sec ds ts_ds
 
-save "$odfiles/processed/HH2009_long_survey.dta", replace
+compress
+
+save "$odfiles/processed/HH2009_long.dta", replace
 
 
 timer off 1
