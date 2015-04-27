@@ -234,6 +234,11 @@ li ID date halfhour s_* in 1/12, sep(2)
 
 drop m_cluster timestamp date ds_halfhour halfhour hour mins sec
 
+* only keep those that matched
+keep if m_survey == 3
+
+drop m_survey
+
 save "$pdfiles/CER_OctHH_data/CER_Oct2009HH_30min_survey.dta", replace
 
 
