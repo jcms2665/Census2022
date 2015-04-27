@@ -72,22 +72,12 @@ tab ba_empl, mi
 
 ************
 * floor area
-su Question6103Whatistheapprox
-
-* max value = missing value???
-
-* in sq feet or sq metres?
-tab Question61031Isthat
-* most people answered in sq feet so keep that way
-gen ba_floorarea = Question6103Whatistheapprox if Question61031Isthat == "2"
-* 1 square metre = 10.7639104 sq feet
-replace ba_floorarea = Question6103Whatistheapprox*10.76 if Question61031Isthat == "1"
-
+* remember lots missing and possibly mis-estimated data
 su ba_floorarea, de
 
 ********
 * income
-* remember we had to leave out people who didn't answer yearly or who gave values after tax
+* remember have to leave out people who didn't answer yearly or who gave values after tax
 tab ba_income, mi
 
 * switch to the daily summaries
@@ -158,21 +148,28 @@ restore
 tab ba_nchildren Question43111Howmanypeopleu, mi
 
 * simple tables
-* by children
-bysort midweek: table halfhour ba_nchildren, c(mean kwh)
-* by recoded employment status
-bysort midweek: table halfhour ba_empl, c(mean kwh)
+local period "0 1"
+local vars "ba_nchildren ba_empl"
+foreach v of local vars {
+	foreach p of local period {
+		di "* Calculating a table for `v' for midweek == `p'"
+		qui: tabout halfhour `v' using "$rfiles/CER-24hr-consumption-profile-by-`v'-weekend.txt" if midweek == `p', ///
+			c(mean kwh) sum format(3) replace
+	}
+}
 
-di "* midweek profles for midweek clusters - mean"
-table halfhour midwk_fitcluster if midweek == 1, c(mean kwh)
-di "* midweek profles for midweek clusters - sum"
-table halfhour midwk_fitcluster if midweek == 1, c(sum kwh)
+di "* midweek profles for midweek clusters"
+qui: tabout halfhour midwk_fitcluster using "$rfiles/CER-24hr-consumption-profile-by-midwk_fitcluster-midweek.txt" if midweek == 1, ///
+	c(mean kwh) sum format(3) replace
+qui: tabout halfhour midwk_fitcluster using "$rfiles/CER-24hr-consumption-profile-by-midwk_fitcluster-midweek.txt" if midweek == 1, ///
+	c(sum kwh) sum format(3) replace
 
 
 di "* weekend profles for weekend clusters - mean"
-table halfhour wkend_fitcluster if midweek == 0, c(mean kwh)
-di "* weekend profles for weekend clusters - sum"
-table halfhour wkend_fitcluster if midweek == 0, c(sum kwh)
+qui: tabout halfhour wkend_fitcluster using "$rfiles/CER-24hr-consumption-profile-by-midwk_fitcluster-midweek.txt" if midweek == 0, ///
+	c(mean kwh) sum format(3) replace
+qui: tabout halfhour wkend_fitcluster using "$rfiles/CER-24hr-consumption-profile-by-midwk_fitcluster-midweek.txt" if midweek == 0, ///
+	c(sum kwh) sum format(3) replace
 
 timer off 1
 di "Time taken:"
