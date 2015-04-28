@@ -94,10 +94,10 @@ gen s_hour = hh(s_halfhour)
 
 * this creates a big list of all IDs so we can loop over it - takes a while
 * could just start from min & loop to max - but would then be testing for non-existent households
-* qui: levelsof ID, local(ids)
+qui: levelsof ID, local(ids)
 
 * for testing
-local ids "1002 1003 1004"
+* local ids "1002 1003 1004"
 
 foreach m of local midweek {
 	di "****************"
