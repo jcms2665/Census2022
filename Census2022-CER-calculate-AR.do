@@ -61,7 +61,7 @@ timer on 1
 
 *****
 * use the pre-created October 2009 dataset
-* see https://github.com/dataknut/Census2022/blob/master/CER-data-processing.do
+* see https://github.com/dataknut/Census2022/blob/master/Census2022-CER-data-processing.do
 
 * load 1/2 hour data (don't need survey for this)
 use "$pdfiles/CER_Oct2009HH_30min_survey.dta", clear

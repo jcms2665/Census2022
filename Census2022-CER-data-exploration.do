@@ -52,7 +52,7 @@ timer on 1
 
 *****
 * use the pre-created October 2009 dataset
-* see https://github.com/dataknut/Census2022/blob/master/CER-data-processing.do
+* see https://github.com/dataknut/Census2022/blob/master/Census2022-CER-data-processing.do
 
 * start with the survey
 use "$pdfiles/Smart meters Residential pre-trial survey data-$version.dta", clear
