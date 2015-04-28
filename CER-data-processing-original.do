@@ -229,17 +229,40 @@ drop date ds_halfhour halfhour hour mins sec ds ts_ds
 
 compress
 
+tab s_dow, mi
+
 * test to see if missing half hours and ids
 
 xtset ID s_datetime, delta(30 minutes)
 
-* possibly
+* possibly - there are some gaps (missing ids/times within series) and it is unbalanced (missing id/time combinations at each end)
 
-* expand to all 30 seconds between the first and last obs for each hubid
-* (increases file size quite a bit)
-* , full -> imputes ALL missing periods
+* expand to all 1/2 hours seconds between the first and last obs for each hubid - increases file size quite a bit
+* , full -> this option imputes ALL missing periods - greatly inflates the file size so only use if necessary
 * puts . into any missing var - fix that later
 tsfill
+
+tab s_dow, mi
+
+gen is_missing = 0
+replace is_missing = 1 if s_dow == .
+
+tab is_missing
+
+* drop the derived time variables which will have missing values in the gaps we have filled
+drop s_date s_dow s_halfhour
+* rebuild them from s_datetime
+* NB: if we did not specify the  'full' option this will only impute missing datetimes
+* between the first & last ID observation - so it fill sin gaps, it does NOT full up all 
+* possible datetimes from the start to the end of the sample
+gen double s_dow = dow(dofc(s_datetime))
+gen double s_date = mdy(month(dofc(s_datetime)), day(dofc(s_datetime)), year(dofc(s_datetime)))
+format s_date %td
+gen double s_halfhour = hh(s_datetime) + mm(s_datetime) + ss(s_datetime)
+format s_halfhour %tc
+* so there are 96 missing. Funnily enough that is 2 * 48
+
+compress
 
 save "$odfiles/processed/HH2009_long_filled.dta", replace
 
