@@ -53,7 +53,7 @@ clear all
 
 capture log close
 
-log using "$rfiles/CER-calculate-AR-$version.smcl", replace
+log using "$rpath/CER-calculate-AR-$version.smcl", replace
 
 timer clear
 
