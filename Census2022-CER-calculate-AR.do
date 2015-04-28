@@ -119,7 +119,9 @@ foreach m of local midweek {
 			qui: su s_hour
 			di "Halfhours: `r(min)' - `r(max)' for ID: `id' (`midweekt`m'', N = `ba_nadults' adults, `nch' children, respondent: `econt`econ'')"
 			* this draws graph - slow
-			qui: ac kwh, gen(archr) lags(`max_lag') name(ac_hubid`id'_`midweekt`m'') ///
+			* do not name the graph as STATA collects them in memory and eventually runs out
+			* let them replace each other
+			qui: ac kwh, gen(archr) lags(`max_lag') ///
 				`midweektl`m'' /// draw lines
 				`midweektll`m'' /// draw line labels
 				xlabel(0(35)140) ///
