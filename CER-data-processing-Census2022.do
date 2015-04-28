@@ -78,7 +78,6 @@ save "$pdfiles/October 2009 summaries/OctHH_clusterIDs.dta", replace
 
 * add in survey data created using
 * https://github.com/dataknut/Census2022/blob/master/CER-data-processing-original.do
-
 merge 1:1 ID using "$odfiles/processed/Smart meters Residential pre-trial survey data-$version.dta"
 
 * so 746 households don't match to the Oct 2009 sample leaving us with 3,486
