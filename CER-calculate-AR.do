@@ -97,7 +97,7 @@ gen s_hour = hh(s_halfhour)
 qui: levelsof ID, local(ids)
 
 * for testing
-* local ids "1002 1003 1004"
+*local ids "1002 1003 1004"
 
 foreach m of local midweek {
 	di "****************"
@@ -107,7 +107,7 @@ foreach m of local midweek {
 
 		preserve
 			* take out 00:00 - 06:00 as repeat cycle of sleep will swamp other cycles
-			keep if ID == `id' & midweek == `m' & s_hour > 6
+			keep if ID == `id' & midweek == `m' & s_hour >= 6
 			* need to fool ac into thinking these observations are continuous
 			qui: su ID
 			qui: egen lag = fill(1(1)`r(N)')
