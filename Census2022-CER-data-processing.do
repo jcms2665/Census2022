@@ -225,8 +225,10 @@ format s_halfhour %tc
 gen double s_datetime = dhms(s_date, hour, mins, sec)
 format s_datetime %tc
 
-* add the survey data (makes big file) but only keep what we need
-merge m:1 ID using "$pdfiles/Smart meters Residential pre-trial survey data-$version.dta", gen(m_survey) ///
+* add in survey data created using
+* https://github.com/dataknut/Census2022/blob/master/CER-data-processing-original.do
+* but only keep what we need
+merge m:1 ID using "$odfiles/processed/Smart meters Residential pre-trial survey data-$version.dta", gen(m_survey) ///
 	keepusing(ba_*)
 
 sort ID s_datetime
