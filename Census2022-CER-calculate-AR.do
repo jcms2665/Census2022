@@ -35,17 +35,17 @@ GNU General Public License for more details.
 global where "/Users/ben/Documents/Work"
 global proot "$where/Projects/ESRC-Transformative-Census2022"
 
-* original files
-global odfiles "$where/Data/Social Science Datatsets/CER Smart Metering Project"
-
 * processed files
-global pdfiles "$proot/data/cer/CER_OctHH_data"
+global pdfiles "$proot/data/CER-Irish-SM-Trial/CER_OctHH_data"
 
 * results path
 global rpath "$proot/results/CER-Irish-SM-Trial"
 
 
 global version "v1"
+
+* TO DO:
+* get the graphs labels to work correctly!
 
 set more off
 
@@ -59,99 +59,131 @@ timer clear
 
 timer on 1
 
-*****
-* use the pre-created October 2009 dataset
-* see https://github.com/dataknut/Census2022/blob/master/Census2022-CER-data-processing.do
-
-* load 1/2 hour data (don't need survey for this)
-use "$pdfiles/CER_Oct2009HH_30min_survey.dta", clear
-
+* set locals
 local midweek "0 1" // 0 = weekends
 local midweekt1 "Midweek"
 local midweekt0 "Weekends"
 
-* we have 36 values 'per day' (not 48)
-* so lag 35 = this time tomorrow
-* for mid-week, this time next week = lag 105
-* for weekend, this time next week = lag 70
-* so set max lags = 150 to cover both (will also mean 2 weekends)
-local max_lag = 150
-local midweektl0 xline(35 70, lstyle(refline )) 
-* the labels don't seem to show up?
-local midweektll0 text(35 0.5 "This time tomorrow", place(w)) text(70 0.5 "This time next weekend", place(e)) // weekend
+* for testing - gets over-written if do_ar_all run
+local ids "1002 1003 1004"
 
-local midweektl1 xline(35 70 105, lstyle(refline )) 
-* the labels don't seem to show up?
-local midweektll1 text(35 0 "This time tomorrow", place(w)) text(70 0 "This time the day after tomorrow", place(w)) text(105 0 "This time next week", place(w)) // midweek
+* control flow
+local do_ar_all 0
+local do_merge_all 1
 
-local econt1 "In work"
-local econt2 "Unemployed"
-local econt3 "Retired"
-local econt4 "Caring for relative or family"
+*****
+if `do_ar_all' {
+	di "*-> do_ar_all = `do_ar_all' so running ID by ID AR calculations and merging process"
+	* use the pre-created Census2022 October 2009 dataset
+	* see https://github.com/dataknut/Census2022/blob/master/Census2022-CER-data-processing.do
+	
+	* load 1/2 hour data (don't need survey for this)
+	use "$pdfiles/CER_Oct2009HH_30min_survey.dta", clear
+	
+	
+	* we have 36 values 'per day' (not 48)
+	* so lag 35 = this time tomorrow
+	* for mid-week, this time next week = lag 105
+	* for weekend, this time next week = lag 70
+	* so set max lags = 150 to cover both (will also mean 2 weekends)
+	local max_lag = 150
+	local midweektl0 xline(35 70, lstyle(refline )) 
+	* the labels don't seem to show up where I expect them to
+	local midweektll0 text(35 0.5 "This time tomorrow", place(w)) text(70 0.5 "This time next weekend", place(e)) // weekend
+	
+	local midweektl1 xline(35 70 105, lstyle(refline )) 
+	* the labels don't seem to show up?
+	local midweektll1 text(35 0 "This time tomorrow", place(w)) text(70 0 "This time the day after tomorrow", place(w)) text(105 0 "This time next week", place(w)) // midweek
+	
+	local econt1 "In work"
+	local econt2 "Unemployed"
+	local econt3 "Retired"
+	local econt4 "Caring for relative or family"
+	
+	* filter for 
+	gen s_hour = hh(s_halfhour)
+	
+	* this creates a big list of all IDs so we can loop over it - takes a while
+	* could just start from min & loop to max - but would then be testing for non-existent households
+	*qui: levelsof ID, local(ids)
 
-* filter for 
-gen s_hour = hh(s_halfhour)
-
-* this creates a big list of all IDs so we can loop over it - takes a while
-* could just start from min & loop to max - but would then be testing for non-existent households
-qui: levelsof ID, local(ids)
-
-* for testing
-*local ids "1002 1003 1004"
-
-foreach m of local midweek {
-	di "****************"
-	di "* Calculating ARs for midweek = `m' (`midweekt`m'') " 
-	foreach id of local ids {
-		di "* -> ID = `id'"
-
-		preserve
-			* take out 00:00 - 06:00 as repeat cycle of sleep will swamp other cycles
-			keep if ID == `id' & midweek == `m' & s_hour >= 6
-			* need to fool ac into thinking these observations are continuous
-			qui: su ID
-			qui: egen lag = fill(1(1)`r(N)')
-			tsset lag
-			* do this here so local is set to the unique valuye for this hh
-			qui: levelsof ba_nchildren, local(nch)
-			qui: levelsof ba_nadults, local(ba_nadults)
-			qui: levelsof ba_empl, local(econ)
-			qui: su s_hour
-			di "Halfhours: `r(min)' - `r(max)' for ID: `id' (`midweekt`m'', N = `ba_nadults' adults, `nch' children, respondent: `econt`econ'')"
-			* this draws graph - slow
-			* do not name the graph as STATA collects them in memory and eventually runs out
-			* let them replace each other
-			qui: ac kwh, gen(archr) lags(`max_lag') ///
-				`midweektl`m'' /// draw lines
-				`midweektll`m'' /// draw line labels
-				xlabel(0(35)140) ///
-				note("Halfhours: `r(min)' - `r(max)' for ID: `id' (`midweekt`m'', `ba_nadults' adult(s), `nch' children, respondent: `econt`econ'')")
-			graph export "$rpath/graphs/kwh_archr_hubid`id'_`midweekt`m''_$version.png", replace
-			
-			di "* save out arch results for household ID = `id'"
-			qui: keep lag archr ID
-			qui: save "$rpath/tmp/archr-`id'_`midweekt`m''_$version.dta", replace
-			di "* Done"
-		restore
+	foreach m of local midweek {
+		di "****************"
+		di "* Calculating ARs for midweek = `m' (`midweekt`m'') " 
+		foreach id of local ids {
+			di "* -> ID = `id'"
+	
+			preserve
+				* take out 00:00 - 06:00 as repeat cycle of sleep will swamp other cycles
+				keep if ID == `id' & midweek == `m' & s_hour >= 6
+				* need to fool ac into thinking these observations are continuous
+				qui: su ID
+				qui: egen lag = fill(1(1)`r(N)')
+				tsset lag
+				* do this here so local is set to the unique valuye for this hh
+				qui: levelsof ba_nchildren, local(nch)
+				qui: levelsof ba_nadults, local(ba_nadults)
+				qui: levelsof ba_empl, local(econ)
+				qui: su s_hour
+				di "Halfhours: `r(min)' - `r(max)' for ID: `id' (`midweekt`m'', N = `ba_nadults' adults, `nch' children, respondent: `econt`econ'')"
+				* this draws graph - slow
+				* do NOT name the graph - STATA will keep them all and eventually run out of memory
+				qui: ac kwh, gen(archr) lags(`max_lag') ///
+					`midweektl`m'' /// draw lines
+					`midweektll`m'' /// draw line labels
+					xlabel(0(35)140) ///
+					note("Halfhours: `r(min)' - `r(max)' for ID: `id' (`midweekt`m'', `ba_nadults' adult(s), `nch' children, respondent: `econt`econ'')")
+				graph export "$rpath/graphs/kwh_archr_hubid`id'_`midweekt`m''_$version.png", replace
+				
+				di "* save out arch results for household ID = `id' keeping the lags we've calculated (should be `max_lag')"
+				qui: keep if archr != .
+				qui: keep lag archr ID
+				qui: save "$rpath/tmp/archr-`id'_`midweekt`m''_$version.dta", replace
+				di "* Done"
+			restore
+		}
 	}
+}
+else {
+	di "*-> do_ar_all = `do_ar_all' so skipping ID by ID AR calculations"
 }
 
 clear
 
-* pool all the results
+if `do_merge_all' {
+	* pool all the results
+	foreach m of local midweek {
+		di "****************"
+		di "* Loading `midweekt`m'' files"
+		foreach id of local ids {
+			append using "$rpath/tmp/archr-`id'_`midweekt`m''_$version.dta"
+			*erase "$rpath/tmp/archr-`id'_`midweekt`m''_$version.dta"
+		}
+		* distribution of average values for first 70?
+		graph box archr if lag <= 105, over(lag)
+		graph export "$rpath/tmp/box_mean_archr_all_hubids_`midweekt`m''_$version.png", replace
+		* tab ID
+		save "$rpath/tmp/archr-all_hubids_`midweekt`m''_$version.dta", replace
+		* save .csv file for R
+		outsheet using "$rpath/tmp/archr-all_hubids_`midweekt`m''_$version.csv", comma replace
+	}	
+}
+else {
+	di "*-> do_merge_all = `do_merge_all' so skipping merging process"
+}
+
+/*
+* graph aggregated results
 foreach m of local midweek {
 	di "****************"
 	di "* Loading `midweekt`m'' files"
-	foreach id of local ids {
-		append using "$rpath/tmp/archr-`id'_`midweekt`m''_$version.dta"
-		erase "$rpath/tmp/archr-`id'_`midweekt`m''_$version.dta"
-	}
+	use "$pdfiles/archr-all_hubids_`midweekt`m''_$version.dta", clear
 	* distribution of average values for first 70?
 	graph box archr if lag <= 105, over(lag)
 	graph export "$rpath/graphs/box_mean_archr_all_hubids_`midweekt`m''_$version.png", replace
-	save "$rpath/archr-all_hubids_`midweekt`m''_$version.dta", replace
+	outsheet 
 }
-
+*/
 
 timer off 1
 di "Time taken:"
