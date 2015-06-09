@@ -125,6 +125,7 @@ stddata = mydatam[,177:224]
 stddata = na.omit(stddata)
 stddata = scale(stddata)   ## make mean 0, stdev 1
 
+## k means clustering
 ## partitioning by a plot of the within groups sum of squares (WSS) by number of clusters extracted (looking for a bend in the plot, http://www.statmethods.net/advstats/cluster.html)
 ## wss <- (nrow(mydata)-1)*sum(apply(mydata,2,var))
 wss <- (nrow(stddata)-1)*sum(apply(stddata,2,var))
