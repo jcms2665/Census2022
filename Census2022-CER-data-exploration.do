@@ -8,7 +8,9 @@
 * "Census 2022: Transforming Small Area Socio-Economic Indicators through 'Big Data'" Project 
 * - http://gtr.rcuk.ac.uk/project/2D2CD798-4F04-4399-B1AF-D810A233DD21
 * - http://www.energy.soton.ac.uk/tag/census2022/
- 
+
+## For the latest version of this code go to: https://github.com/dataknut/Census2022
+
 Copyright (C) 2014  University of Southampton
 
 Author: Ben Anderson (b.anderson@soton.ac.uk, @dataknut, https://github.com/dataknut) 
@@ -81,6 +83,7 @@ su ba_floorarea, de
 tab ba_income, mi
 
 * switch to the daily summaries
+* this includes Sharon's weekend & midweek cluster membership variables
 use "$pdfiles/Oct-2009-daily-summaries-survey-$version.dta", clear
 
 di "* check collinearity 'As a rule of thumb, a tolerance of 0.1 or less (equivalently VIF of 10 or greater)  is a cause for concern. '"
