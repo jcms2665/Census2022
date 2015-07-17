@@ -32,7 +32,7 @@ GNU General Public License for more details.
 
 */
 
-local where "/Users/ben/Documents/Work"
+local where "~/Documents/Work"
 local projroot "`where'/Projects/ESRC-Transformative-Census2022"
 local rfiles "`projroot'/results/Lboro1min"
 local dfiles "`where'/Data/Social Science Datatsets/6583 - One-Minute Resolution Domestic Electricity Use Data 2008-2009/processed/"

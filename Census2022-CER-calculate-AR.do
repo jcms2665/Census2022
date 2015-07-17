@@ -34,7 +34,7 @@ GNU General Public License for more details.
 
 */
 
-global where "/Users/ben/Documents/Work"
+global where "~/Documents/Work"
 global proot "$where/Projects/ESRC-Transformative-Census2022"
 
 * processed files
