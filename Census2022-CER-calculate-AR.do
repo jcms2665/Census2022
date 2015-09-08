@@ -83,7 +83,7 @@ if `do_ar_all' {
 	use "$pdfiles/CER_Oct2009HH_30min_survey.dta", clear
 	
 	
-	* we have 36 values 'per day' (not 48)
+	* we have 36 values 'per day' (not 48) as we will remove 00:00 - 06:00 (remove sleep)
 	* so lag 35 = this time tomorrow
 	* for mid-week, this time next week = lag 105
 	* for weekend, this time next week = lag 70
