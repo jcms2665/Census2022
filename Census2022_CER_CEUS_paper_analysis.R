@@ -28,20 +28,20 @@
 ###########################################
 # Housekeeping ----
 # clear out all old objects etc to avoid confusion
-rm(list = ls()) 
+#rm(list = ls()) 
 
 library(data.table) # for super fast tables
 library(foreign)  # to import the survey data - we've cheated and used STATA to read in and save out the .xlsx file as it 
     # converts q names and is a lot quicker!
+library(psych) # useful for skew etc
 
 ###########################################
-# Load data ----
+# Loading data
 cerPath <- "~/Documents/Work/Data/CER Smart Metering Project/"
 samplePath <- "data/original/CER_both/CER Electricity Revised March 2012/"
 dPath <- "data/processed/"
 
-# load pre-trial survey
-# use 
+# Load pre-trial survey ----
 cerResPreSurvey <- paste0(
   cerPath,dPath,"Smart meters Residential pre-trial survey data.dta"
 )
@@ -60,10 +60,47 @@ cerResPreSurveyDT$baCompletedPreSurvey <- factor(cerResPreSurveyDT$baCompletedPr
 with(cerResPreSurveyDT,
      table(baCompletedPreSurvey,question200pleaserecordsexf, useNA = "always")
      )
-# create a small subset of the pre trial survey
-cerResPreSurveyDTred <- cerResPreSurveyDT[,.(ID,baCompletedPreSurvey)]
 
-# load post-trial survey
+# create heating variable
+cerResPreSurveyDT$baHeat <- ifelse(cerResPreSurveyDT$question470whichofthefollow == 1,
+                                    "Electricity_storage",
+                                    NA)
+cerResPreSurveyDT$baHeat <- ifelse(cerResPreSurveyDT$aq == 1,
+                                    "Electricity_plug_in",
+                                    cerResPreSurveyDT$baHeat)
+cerResPreSurveyDT$baHeat <- ifelse(cerResPreSurveyDT$ar == 1,
+                                    "Gas",
+                                    cerResPreSurveyDT$baHeat)
+cerResPreSurveyDT$baHeat <- ifelse(cerResPreSurveyDT$as == 1,
+                                    "Oil",
+                                    cerResPreSurveyDT$baHeat)
+cerResPreSurveyDT$baHeat <- ifelse(cerResPreSurveyDT$at == 1,
+                                    "Solid_fuels",
+                                    cerResPreSurveyDT$baHeat)
+cerResPreSurveyDT$baHeat <- ifelse(cerResPreSurveyDT$au == 1,
+                                    "Renewables",
+                                    cerResPreSurveyDT$baHeat)
+cerResPreSurveyDT$baHeat <- ifelse(cerResPreSurveyDT$av == 1,
+                                    "Other",
+                                    cerResPreSurveyDT$baHeat)
+# create number of people variable
+cerResPreSurveyDT$baNpeople[cerResPreSurveyDT$question410whatbestdescribes == 1] <- "1"
+cerResPreSurveyDT$baNpeople[cerResPreSurveyDT$question420howmanypeopleove == 1] <- "2"
+cerResPreSurveyDT$baNpeople[cerResPreSurveyDT$question420howmanypeopleove == 2] <- "3"
+cerResPreSurveyDT$baNpeople[cerResPreSurveyDT$question420howmanypeopleove == 3] <- "4"
+cerResPreSurveyDT$baNpeople[cerResPreSurveyDT$question420howmanypeopleove >= 4] <- "5+"
+
+with(cerResPreSurveyDT,
+     table(baNpeople,baCompletedPreSurvey)
+     )
+
+# create a small subset of the pre trial survey
+cerResPreSurveyDTred <- cerResPreSurveyDT[,.(ID,
+                                             baCompletedPreSurvey,
+                                             baHeat,
+                                             baNpeople)]
+
+# Load post-trial survey ----
 cerResPostSurvey <- paste0(
   cerPath,dPath,"Smart meters Residential post-trial survey data.dta"
 )
@@ -101,50 +138,20 @@ cerSampleAllocDT$ba_allocation_code <- factor(cerSampleAllocDT$ba_allocation_cod
        )
        )
 
-# load 2009 data
+# Load Oct 2009 consumption data ----
 cerOct09 <- paste0(
   cerPath,dPath,"CER_October_2009_residential.csv"
 )
 cerOct09DT <- fread(cerOct09)
 setkey(cerOct09DT, ID)
 
-cerDec09 <- paste0(
-  cerPath,dPath,"CER_December_2009_residential.csv"
-)
-cerDec09DT <- fread(cerDec09)
-setkey(cerDec09DT, ID)
-
-# load 2010 data
-cerOct10 <- paste0(
-  cerPath,dPath,"CER_October_2010_residential.csv"
-)
-cerOct10DT <- fread(cerOct10)
-setkey(cerOct10DT, ID)
-
-cerDec10 <- paste0(
-  cerPath,dPath,"CER_December_2010_residential.csv"
-)
-cerDec10DT <- fread(cerDec10)
-setkey(cerDec10DT, ID)
-
 # Check we just have residential ----
-# 2009
+# Use Code on consumption data
 with(cerOct09DT,
      table(Code)
 )
-with(cerDec09DT,
-     table(Code)
-)
-# 2010
-with(cerOct10DT,
-     table(Code)
-)
-with(cerDec10DT,
-     table(Code)
-     )
 
 # Do additional check using sample allocation file
-# 2009
 with(cerOct09DT[cerSampleAllocDT],
      table(Code, ba_allocation_code, useNA = "always")
 )
@@ -160,51 +167,8 @@ print(paste0(
   )
 )
 
-with(cerDec09DT[cerSampleAllocDT],
-     table(Code, ba_allocation_code, useNA = "always")
-)
-# looks OK but filter in any case using allocation code
-cerDec09DTres <- cerDec09DT[cerSampleAllocDT[cerSampleAllocDT$ba_allocation_code == "Residential"]]
-cerDec09DTres <- cerDec09DTres[cerDec09DTres$Code == "Residential"]
-print(paste0(
-  "Original Dec 09: ", length(cerDec09DT$ID), " records with ", uniqueN(cerDec09DT$ID), " unique IDs"
-  )
-)
-print(paste0(
-  "Clean Dec 09: ", length(cerDec09DTres$ID), " records with ", uniqueN(cerDec09DTres$ID), " unique IDs"
-  )
-)
-
-# 2010
-with(cerOct10DT[cerSampleAllocDT],
-     table(Code, ba_allocation_code, useNA = "always")
-)
-# looks OK but filter in any case using allocation code
-cerOct10DTres <- cerOct10DT[cerSampleAllocDT[cerSampleAllocDT$ba_allocation_code == "Residential"]]
-cerOct10DTres <- cerOct10DTres[cerOct10DTres$Code == "Residential"]
-print(paste0(
-  "Original Oct 10: ", length(cerOct10DT$ID), " records with ", uniqueN(cerOct10DT$ID), " unique IDs"
-  )
-)
-print(paste0(
-  "Clean Oct 10: ", length(cerOct10DTres$ID), " records with ", uniqueN(cerOct10DTres$ID), " unique IDs"
-  )
-)
-
-with(cerDec10DT[cerSampleAllocDT],
-     table(Code, ba_allocation_code, useNA = "always")
-)
-# looks OK but filter in any case using allocation code
-cerDec10DTres <- cerDec10DT[cerSampleAllocDT[cerSampleAllocDT$ba_allocation_code == "Residential"]]
-cerDec10DTres <- cerDec10DTres[cerDec10DTres$Code == "Residential"]
-print(paste0(
-  "Original Dec 10: ", length(cerDec10DT$ID), " records with ", uniqueN(cerDec10DT$ID), " unique IDs"
-  )
-)
-print(paste0(
-  "Clean Dec 10: ", length(cerDec10DTres$ID), " records with ", uniqueN(cerDec10DTres$ID), " unique IDs"
-  )
-)
+# drop tables we don't need
+cerOct09DT <- NULL
 
 # Check for survey matches ----
 # 2009
@@ -216,28 +180,6 @@ with(cerOct09DTres,
 cerOct09DTres <- cerOct09DTres[ba_allocation_code == "Residential" & baCompletedPreSurvey == "Pre-trial survey"]
 print(paste0("Oct 09 IDs who both answered pre trial survey and recorded data: ", uniqueN(cerOct09DTres$ID)))
 
-cerDec09DTres <- cerDec09DTres[cerResPreSurveyDTred]
-with(cerDec09DTres,
-     table(ba_allocation_code,baCompletedPreSurvey, useNA = "always")
-)
-cerDec09DTres <- cerDec09DTres[ba_allocation_code == "Residential" & baCompletedPreSurvey == "Pre-trial survey"]
-print(paste0("Dec 09 IDs who both answered pre trial survey and recorded data: ", uniqueN(cerDec09DTres$ID)))
-
-# 2010
-cerOct10DTres <- cerOct10DTres[cerResPreSurveyDTred]
-with(cerOct10DTres,
-     table(ba_allocation_code,baCompletedPreSurvey, useNA = "always")
-)
-cerOct10DTres <- cerOct10DTres[ba_allocation_code == "Residential" & baCompletedPreSurvey == "Pre-trial survey"]
-print(paste0("Oct 10 IDs who both answered pre trial survey and recorded data: ", uniqueN(cerOct10DTres$ID)))
-
-cerDec10DTres <- cerDec10DTres[cerResPreSurveyDTred]
-with(cerDec10DTres,
-     table(ba_allocation_code,baCompletedPreSurvey, useNA = "always")
-)
-cerDec10DTres <- cerDec10DTres[ba_allocation_code == "Residential" & baCompletedPreSurvey == "Pre-trial survey"]
-print(paste0("Dec 10 IDs who both answered pre trial survey and recorded data: ", uniqueN(cerDec10DTres$ID)))
-
 # Create a useful date/time in the consumption data ----
 summary(cerOct09DTres)
 head(cerOct09DTres)
@@ -247,38 +189,12 @@ cerOct09DTres$r_datetime <- as.POSIXct(cerOct09DTres$datetime_start,
 # check
 head(cerOct09DTres)
 
-# do the rest of them
-cerDec09DTres$r_datetime <- as.POSIXct(cerDec09DTres$datetime_start, 
-                                       tz="",
-                                       "%Y-%m-%d %H:%M:%S")
-cerOct10DTres$r_datetime <- as.POSIXct(cerOct10DTres$datetime_start, 
-                                       tz="",
-                                       "%Y-%m-%d %H:%M:%S")
-cerDec10DTres$r_datetime <- as.POSIXct(cerDec10DTres$datetime_start, 
-                                       tz="",
-                                       "%Y-%m-%d %H:%M:%S")
-
-
 # extract useful time elements
+cerOct09DTres$r_date <- as.Date(cerOct09DTres$r_datetime)
 cerOct09DTres$r_year <- as.POSIXlt(cerOct09DTres$r_datetime)$year # since 1900
 cerOct09DTres$r_mday <- as.POSIXlt(cerOct09DTres$r_datetime)$mday
 cerOct09DTres$r_wday <- as.POSIXlt(cerOct09DTres$r_datetime)$wday # Sunday = 0
 cerOct09DTres$r_hour <- as.POSIXlt(cerOct09DTres$r_datetime)$hour
-
-cerDec09DTres$r_year <- as.POSIXlt(cerDec09DTres$r_datetime)$year # since 1900
-cerDec09DTres$r_mday <- as.POSIXlt(cerDec09DTres$r_datetime)$mday
-cerDec09DTres$r_wday <- as.POSIXlt(cerDec09DTres$r_datetime)$wday # Sunday = 0
-cerDec09DTres$r_hour <- as.POSIXlt(cerDec09DTres$r_datetime)$hour
-
-cerOct10DTres$r_year <- as.POSIXlt(cerOct10DTres$r_datetime)$year # since 1900
-cerOct10DTres$r_mday <- as.POSIXlt(cerOct10DTres$r_datetime)$mday
-cerOct10DTres$r_wday <- as.POSIXlt(cerOct10DTres$r_datetime)$wday # Sunday = 0
-cerOct10DTres$r_hour <- as.POSIXlt(cerOct10DTres$r_datetime)$hour
-
-cerDec10DTres$r_year <- as.POSIXlt(cerDec10DTres$r_datetime)$year # since 1900
-cerDec09DTres$r_mday <- as.POSIXlt(cerDec09DTres$r_datetime)$mday
-cerDec09DTres$r_wday <- as.POSIXlt(cerDec09DTres$r_datetime)$wday # Sunday = 0
-cerDec09DTres$r_hour <- as.POSIXlt(cerDec09DTres$r_datetime)$hour
 
 # create weekday, mid-week and weekend indicator
 cerOct09DTres$weekend <- ifelse(cerOct09DTres$r_wday == 0 | cerOct09DTres$r_wday == 6, 
@@ -298,7 +214,7 @@ table(cerOct09DTres$weekend, cerOct09DTres$r_wday, useNA = "always")
 table(cerOct09DTres$weekday, cerOct09DTres$r_wday, useNA = "always")
 table(cerOct09DTres$mid_week, cerOct09DTres$r_wday, useNA = "always")
 
-# Descriptives for Tabvle 1 (Table 1) ----
+# Descriptives for Table 1 (Table 1) ----
 # Pre-trial survey completions:
 uniqueN(cerResPreSurveyDTred$ID)
 # Number of households in residential data:
@@ -308,3 +224,66 @@ uniqueN(cerResPostSurveyDTred$ID)
 # Number of households who completed both surveys
 cerSurveysDT <- cerResPreSurveyDTred[cerResPostSurveyDTred]
 table(cerSurveysDT$baCompletedPreSurvey,cerSurveysDT$baCompletedPostSurvey, useNA = "always")
+
+# Descriptive statistics for mid-week (Table 2)
+# half hour level - all
+describe(cerOct09DTres[mid_week == 1, kWh])
+# baseload 02:00 - 05:00
+describe(cerOct09DTres[mid_week == 1 & r_hour >= 2 & r_hour <= 5, 
+                       kWh
+                       ]
+         )
+# evening peak 17:00 - 20:00
+describe(cerOct09DTres[mid_week == 1 & r_hour >= 16 & r_hour <= 20,
+                       kWh
+                       ]
+         )
+# by heating type
+cerOct09DTres[mid_week == 1,
+              .(
+                N_hh = uniqueN(ID), # number of households in this joined table (survey + consumption data)
+                N = length(kWh), # n half hour records
+                Sum = sum(kWh, na.rm = TRUE),  # remove NAs
+                Mean = mean(kWh, na.rm = TRUE),
+                sd = sd(kWh, na.rm = TRUE),
+                median = median(kWh, na.rm = TRUE),
+                min = min(kWh, na.rm = TRUE),
+                max = max(kWh, na.rm = TRUE),
+                skew = skew(kWh, na.rm = TRUE),
+                kurtosi = kurtosi(kWh, na.rm = TRUE)
+              ),
+              by = baHeat,
+              ][order(baHeat)] # order results
+
+# by number of people
+cerOct09DTres[mid_week == 1,
+              .(
+                N_hh = uniqueN(ID), # number of households in this joined table
+                N = length(kWh), # n half hour records
+                Sum = sum(kWh, na.rm = TRUE),  # remove NAs
+                Mean = mean(kWh, na.rm = TRUE),
+                sd = sd(kWh, na.rm = TRUE),
+                median = median(kWh, na.rm = TRUE),
+                min = min(kWh, na.rm = TRUE),
+                max = max(kWh, na.rm = TRUE),
+                skew = skew(kWh, na.rm = TRUE),
+                kurtosi = kurtosi(kWh, na.rm = TRUE)
+              ),
+              by = baNpeople,
+              ][order(baNpeople)]
+
+octSummarybyDateDT <- cerOct09DTres[mid_week == 1,
+              .(
+                N = length(kWh), # n half hour records
+                Sum = sum(kWh, na.rm = TRUE)  # remove NAs
+              ),
+              by = .(ID,r_date)
+              ][order(ID,r_date)]
+
+describe(octSummarybyDateDT$Sum)
+summary(octSummarybyDateDT)
+
+# test heat differences
+# remember skew!
+#diff_heat <- kruskal.test(kWh ~baHeat, data = cerOct09DTres[mid_week == 1], na.action = na.omit )
+#summary(diff_heat)
