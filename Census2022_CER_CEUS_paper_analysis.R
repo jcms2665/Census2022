@@ -238,22 +238,7 @@ describe(cerOct09DTres[mid_week == 1 & r_hour >= 16 & r_hour <= 20,
                        kWh
                        ]
          )
-# by heating type
-cerOct09DTres[mid_week == 1,
-              .(
-                N_hh = uniqueN(ID), # number of households in this joined table (survey + consumption data)
-                N = length(kWh), # n half hour records
-                Sum = sum(kWh, na.rm = TRUE),  # remove NAs
-                Mean = mean(kWh, na.rm = TRUE),
-                sd = sd(kWh, na.rm = TRUE),
-                median = median(kWh, na.rm = TRUE),
-                min = min(kWh, na.rm = TRUE),
-                max = max(kWh, na.rm = TRUE),
-                skew = skew(kWh, na.rm = TRUE),
-                kurtosi = kurtosi(kWh, na.rm = TRUE)
-              ),
-              by = baHeat,
-              ][order(baHeat)] # order results
+# Descriptive statistics for mid-week (Table 3 - new)
 
 # by number of people
 cerOct09DTres[mid_week == 1,
@@ -272,6 +257,7 @@ cerOct09DTres[mid_week == 1,
               by = baNpeople,
               ][order(baNpeople)]
 
+# daily summaries
 octSummarybyDateDT <- cerOct09DTres[mid_week == 1,
               .(
                 N = length(kWh), # n half hour records
@@ -282,6 +268,23 @@ octSummarybyDateDT <- cerOct09DTres[mid_week == 1,
 
 describe(octSummarybyDateDT$Sum)
 summary(octSummarybyDateDT)
+
+# by heating type (not used in table)
+cerOct09DTres[mid_week == 1,
+              .(
+                N_hh = uniqueN(ID), # number of households in this joined table (survey + consumption data)
+                N = length(kWh), # n half hour records
+                Sum = sum(kWh, na.rm = TRUE),  # remove NAs
+                Mean = mean(kWh, na.rm = TRUE),
+                sd = sd(kWh, na.rm = TRUE),
+                median = median(kWh, na.rm = TRUE),
+                min = min(kWh, na.rm = TRUE),
+                max = max(kWh, na.rm = TRUE),
+                skew = skew(kWh, na.rm = TRUE),
+                kurtosi = kurtosi(kWh, na.rm = TRUE)
+              ),
+              by = baHeat,
+              ][order(baHeat)] # order results
 
 # test heat differences
 # remember skew!
