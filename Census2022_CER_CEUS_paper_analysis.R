@@ -259,7 +259,7 @@ loadPostSurvey <- function() {
 
 loadArchrResults <- function() {
   cerArchrDT <<- as.data.table(
-    read.dta(archrCensus2022)
+    read.dta(paste0(census2022Path,archrCensus2022))
   )
   setkey(cerArchrDT, ID)
 }
