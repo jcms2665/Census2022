@@ -1,14 +1,24 @@
-####################################################################################
-# Data Analysis for ESRC Transformative project paper for Computers, Environment & Urban Systems
-#
-# - Using the Commission for Energy Regulation (CER)'s Irish Smart Meter Trial data
+# Header ####################################################################
+# Data Analysis for paper for Computers, Environment & Urban Systems
+# Uses the Commission for Energy Regulation (CER)'s Irish Smart Meter Trial data
 #   - http://www.ucd.ie/issda/data/commissionforenergyregulationcer/
 #
 # For the latest version of this code go to: https://github.com/dataknut/Census2022
-#
-# Uses CER data pre-processed using:
+
+# Script uses CER data pre-processed using:
 # https://github.com/dataknut/CER/blob/master/CER-data-processing-electricity.R
-#
+
+# Script uses autocorrelation results calculated using:
+# https://github.com/dataknut/CER/blob/master/Census2022-CER-calculate-AR.do
+
+# In addition the paper uses:
+
+# Multilevel regression results calculated using:
+# https://github.com/dataknut/CER/blob/master/Census2022-CER-mixed_model_0910.R
+
+# Logistic regression results calculated using:
+# https://github.com/dataknut/CER/blob/master/Census2022-CER_regP_48_CLUSTER_std-1-5-15.R
+
 # This work was funded by RCUK through the ESRC's Transformative Social Science Programme via the
 # "Census 2022: Transforming Small Area Socio-Economic Indicators through 'Big Data'" Project 
 # - http://gtr.rcuk.ac.uk/project/2D2CD798-4F04-4399-B1AF-D810A233DD21
@@ -29,99 +39,246 @@
 #
 # YMMV - http://en.wiktionary.org/wiki/YMMV
 #
-###########################################
+# End Header ##########################################
+
 # Housekeeping ----
 # clear out all old objects etc to avoid confusion
-#rm(list = ls()) 
+
+rm(list = ls()) 
 
 library(data.table) # for super fast tables
 library(foreign)  # to import the survey data - we've cheated and used STATA to read in and save out the .xlsx file as it 
     # converts q names and is a lot quicker!
 library(psych) # useful for skew etc
+library(ggplot2) # for much nicer graphs
 
-###########################################
-# Loading data
-cerPath <- "~/Documents/Work/Data/CER Smart Metering Project/"
+###
+# Set paths and files ----
+cerPath <- "~/Documents/Work/Data/CER_Smart_Metering_Project/"
 samplePath <- "data/original/CER_both/CER Electricity Revised March 2012/"
 dPath <- "data/processed/"
+census2022Path <- "~/Documents/Work/Projects/ESRC-Transformative-Census2022/data/CER-Irish-SM-Trial/CER_OctHH_data/"
 
-# Load pre-trial survey ----
-cerResPreSurvey <- paste0(
-  cerPath,dPath,"Smart meters Residential pre-trial survey data.dta"
-)
-cerResPreSurveyDT <- as.data.table(
-  read.dta(cerResPreSurvey)
-)
-setkey(cerResPreSurveyDT, ID)
-cerResPreSurveyDT$baCompletedPreSurvey <- 1
-cerResPreSurveyDT$baCompletedPreSurvey <- factor(cerResPreSurveyDT$baCompletedPreSurvey,
-                                              labels = c(
-                                                "Pre-trial survey"
-                                              )
-)
+preTrialSurveyFile <- "Smart meters Residential pre-trial survey data.dta" # use STATA format file (question names de-spaced)
+postTrialSurveyFile <- "Smart meters Residential post-trial survey data.dta" # use STATA format file (question names de-spaced)
+consDataCensus2022 <- "CER_Census2022_Autumn_2009.csv.gz" #use the specific sub-sample 
+              # 27th Sept 2009 (Sun) to 24th Oct 2009 (Sat) inclusive with the duration of 4 weeks
+archrCensus2022 <- "CER_Oct2009_both_archr_all_hubids_v1.dta" # the autocorrelation coefficients per household per lag
 
-# check for NAs
-with(cerResPreSurveyDT,
-     table(baCompletedPreSurvey,question200pleaserecordsexf, useNA = "always")
-     )
+rPath <- "~/OneDrive - University of Southampton/Papers/CEUS-2015-special-issue/v3/results/" # where to put results
 
-# create heating variable
-cerResPreSurveyDT$baHeat <- ifelse(cerResPreSurveyDT$question470whichofthefollow == 1,
-                                    "Electricity_storage",
-                                    NA)
-cerResPreSurveyDT$baHeat <- ifelse(cerResPreSurveyDT$aq == 1,
-                                    "Electricity_plug_in",
-                                    cerResPreSurveyDT$baHeat)
-cerResPreSurveyDT$baHeat <- ifelse(cerResPreSurveyDT$ar == 1,
-                                    "Gas",
-                                    cerResPreSurveyDT$baHeat)
-cerResPreSurveyDT$baHeat <- ifelse(cerResPreSurveyDT$as == 1,
-                                    "Oil",
-                                    cerResPreSurveyDT$baHeat)
-cerResPreSurveyDT$baHeat <- ifelse(cerResPreSurveyDT$at == 1,
-                                    "Solid_fuels",
-                                    cerResPreSurveyDT$baHeat)
-cerResPreSurveyDT$baHeat <- ifelse(cerResPreSurveyDT$au == 1,
-                                    "Renewables",
-                                    cerResPreSurveyDT$baHeat)
-cerResPreSurveyDT$baHeat <- ifelse(cerResPreSurveyDT$av == 1,
-                                    "Other",
-                                    cerResPreSurveyDT$baHeat)
-# create number of people variable
-cerResPreSurveyDT$baNpeople[cerResPreSurveyDT$question410whatbestdescribes == 1] <- "1"
-cerResPreSurveyDT$baNpeople[cerResPreSurveyDT$question420howmanypeopleove == 1] <- "2"
-cerResPreSurveyDT$baNpeople[cerResPreSurveyDT$question420howmanypeopleove == 2] <- "3"
-cerResPreSurveyDT$baNpeople[cerResPreSurveyDT$question420howmanypeopleove == 3] <- "4"
-cerResPreSurveyDT$baNpeople[cerResPreSurveyDT$question420howmanypeopleove >= 4] <- "5+"
 
-with(cerResPreSurveyDT,
-     table(baNpeople,baCompletedPreSurvey)
-     )
+#### Functions ----
+
+loadConsumptionData <- function(){
+  cerOct09 <- paste0(
+    cerPath,dPath,consDataCensus2022 
+  )
+  # load from gzipped file
+  cmd <- paste0("gunzip -c ",cerOct09)
+  cerOct09DT <- fread(cmd)
+  setkey(cerOct09DT, ID)
+  
+  # Check we just have residential ----
+  # Use Code on consumption data
+  with(cerOct09DT,
+       table(AllocCode, useNA = "always")
+  )
+  
+  # Create a useful date/time in the consumption data ----
+  summary(cerOct09DT)
+  head(cerOct09DT)
+  
+  print("# check first few rows")
+  print(head(cerOct09DT))
+  
+  print("# extract useful time elements: date")
+  cerOct09DT$r_date <- as.Date(cerOct09DT$r_datetime)
+  print("# extract useful time elements: year")
+  cerOct09DT$r_year <- as.POSIXlt(cerOct09DT$r_datetime)$year # since 1900
+  print("# extract useful time elements: day of month")
+  cerOct09DT$r_mday <- as.POSIXlt(cerOct09DT$r_datetime)$mday
+  print("# extract useful time elements: day of week")
+  cerOct09DT$r_wday <- as.POSIXlt(cerOct09DT$r_datetime)$wday # Sunday = 0
+  print("# extract useful time elements: hour")
+  cerOct09DT$r_hour <- as.POSIXlt(cerOct09DT$r_datetime)$hour
+  
+  print("# create weekday, mid-week and weekend indicator")
+  cerOct09DT$weekend <- ifelse(cerOct09DT$r_wday == 0 | cerOct09DT$r_wday == 6, 
+                               1, # if weekend
+                               0 # if not
+  )
+  cerOct09DT$weekday <- ifelse(cerOct09DT$r_wday > 0 & cerOct09DT$r_wday < 6, 
+                               1, # if weekday
+                               0 # if not
+  )
+  cerOct09DT$mid_week <- ifelse(cerOct09DT$r_wday > 1 & cerOct09DT$r_wday < 5, 
+                                1, # if Tues - Thurs
+                                0 # if not
+  )
+  print("# check day of week indictaors")
+  print(
+    table(cerOct09DT$weekend, cerOct09DT$r_wday, useNA = "always")
+  )
+  print(
+    table(cerOct09DT$weekday, cerOct09DT$r_wday, useNA = "always")
+  )
+  print(
+    table(cerOct09DT$mid_week, cerOct09DT$r_wday, useNA = "always")
+  )
+  # globalise
+  cerOct09DT <<- cerOct09DT
+}
+
+loadPreSurvey <- function() {
+  cerResPreSurvey <- paste0(
+    cerPath,dPath,preTrialSurveyFile
+  )
+  cerResPreSurveyDT <- as.data.table(
+    read.dta(cerResPreSurvey)
+  )
+  setkey(cerResPreSurveyDT, ID)
+  cerResPreSurveyDT$baCompletedPreSurvey <- 1
+  cerResPreSurveyDT$baCompletedPreSurvey <- factor(cerResPreSurveyDT$baCompletedPreSurvey,
+                                                   labels = c(
+                                                     "Completed pre-trial survey"
+                                                   )
+  )
+  
+  print("# check for NAs")
+  print(
+    with(cerResPreSurveyDT,
+       table(baCompletedPreSurvey,question200pleaserecordsexf, useNA = "always")
+    )
+  )
+  # Process data ----
+  
+  print("# create heating variable - NB original = multi choice")
+  cerResPreSurveyDT$baHeat <- ifelse(cerResPreSurveyDT$question470whichofthefollow == 1,
+                                     "Electricity_storage",
+                                     NA)
+  cerResPreSurveyDT$baHeat <- ifelse(cerResPreSurveyDT$aq == 1,
+                                     "Electricity_plug_in",
+                                     cerResPreSurveyDT$baHeat)
+  cerResPreSurveyDT$baHeat <- ifelse(cerResPreSurveyDT$ar == 1,
+                                     "Gas",
+                                     cerResPreSurveyDT$baHeat)
+  cerResPreSurveyDT$baHeat <- ifelse(cerResPreSurveyDT$as == 1,
+                                     "Oil",
+                                     cerResPreSurveyDT$baHeat)
+  cerResPreSurveyDT$baHeat <- ifelse(cerResPreSurveyDT$at == 1,
+                                     "Solid_fuels",
+                                     cerResPreSurveyDT$baHeat)
+  cerResPreSurveyDT$baHeat <- ifelse(cerResPreSurveyDT$au == 1,
+                                     "Renewables",
+                                     cerResPreSurveyDT$baHeat)
+  cerResPreSurveyDT$baHeat <- ifelse(cerResPreSurveyDT$av == 1,
+                                     "Other",
+                                     cerResPreSurveyDT$baHeat)
+  
+  print("# create hot water variable - NB original = multi choice")
+  cerResPreSurveyDT$baHotWater <- ifelse(cerResPreSurveyDT$question4701whichofthefollo == 1,
+                                         "via central heating",
+                                         NA)
+  cerResPreSurveyDT$baHotWater <- ifelse(cerResPreSurveyDT$ba == 1,
+                                         "Gas",
+                                         cerResPreSurveyDT$baHotWater)
+  cerResPreSurveyDT$baHotWater <- ifelse(cerResPreSurveyDT$bb == 1,
+                                         "Oil",
+                                         cerResPreSurveyDT$baHotWater)
+  cerResPreSurveyDT$baHotWater <- ifelse(cerResPreSurveyDT$bc == 1,
+                                         "Solid_fuel",
+                                         cerResPreSurveyDT$baHotWater)
+  cerResPreSurveyDT$baHotWater <- ifelse(cerResPreSurveyDT$bd == 1,
+                                         "Renewables",
+                                         cerResPreSurveyDT$baHotWater)
+  cerResPreSurveyDT$baHotWater <- ifelse(cerResPreSurveyDT$be == 1,
+                                         "Other",
+                                         cerResPreSurveyDT$baHotWater)
+  # code these last so they over-write previous
+  cerResPreSurveyDT$baHotWater <- ifelse(cerResPreSurveyDT$az == 1,
+                                         "Electricity_Instantaneous",
+                                         cerResPreSurveyDT$baHotWater)
+  cerResPreSurveyDT$baHotWater <- ifelse(cerResPreSurveyDT$ay == 1,
+                                         "Electricity_Immersion",
+                                         cerResPreSurveyDT$baHotWater)
+  
+  print("# create number of people variable")
+  cerResPreSurveyDT$baNpeople[cerResPreSurveyDT$question410whatbestdescribes == 1] <- "1"
+  cerResPreSurveyDT$baNpeople[cerResPreSurveyDT$question420howmanypeopleove == 1] <- "2"
+  cerResPreSurveyDT$baNpeople[cerResPreSurveyDT$question420howmanypeopleove == 2] <- "3"
+  cerResPreSurveyDT$baNpeople[cerResPreSurveyDT$question420howmanypeopleove == 3] <- "4"
+  cerResPreSurveyDT$baNpeople[cerResPreSurveyDT$question420howmanypeopleove >= 4] <- "5+"
+  
+  print(
+    with(cerResPreSurveyDT,
+         table(baNpeople,baCompletedPreSurvey)
+    )
+  )
+  
+  print("# create employment variable")
+  cerResPreSurveyDT$ba_empl[cerResPreSurveyDT$question310whatistheemploym == 1] <- "paid_work" # employee
+  cerResPreSurveyDT$ba_empl[cerResPreSurveyDT$question310whatistheemploym == 2] <- "paid_work" # self-employed, with empls
+  cerResPreSurveyDT$ba_empl[cerResPreSurveyDT$question310whatistheemploym == 3] <- "paid_work" # self-employed, no empls
+  cerResPreSurveyDT$ba_empl[cerResPreSurveyDT$question310whatistheemploym == 4] <- "unemployed" # unemployed seeking work
+  cerResPreSurveyDT$ba_empl[cerResPreSurveyDT$question310whatistheemploym == 5] <- "unemployed" # unemployed not seeking
+  cerResPreSurveyDT$ba_empl[cerResPreSurveyDT$question310whatistheemploym == 6] <- "retired" # retired
+  cerResPreSurveyDT$ba_empl[cerResPreSurveyDT$question310whatistheemploym == 7] <- "carer" # carer
+  
+  print(
+    with(cerResPreSurveyDT,
+         table(ba_empl,baCompletedPreSurvey)
+    )
+  )
+
+  # globalise
+  cerResPreSurveyDT <<- cerResPreSurveyDT
+}
+
+loadPostSurvey <- function() {
+  cerResPostSurvey <- paste0(
+    cerPath,dPath,postTrialSurveyFile
+  )
+  cerResPostSurveyDT <- as.data.table(
+    read.dta(cerResPostSurvey)
+  )
+  setkey(cerResPostSurveyDT, ID)
+  cerResPostSurveyDT$baCompletedPostSurvey <- 1
+  cerResPostSurveyDT$baCompletedPostSurvey <- factor(cerResPostSurveyDT$baCompletedPostSurvey,
+                                                     labels = c(
+                                                       "Completed post-trial survey"
+                                                     )
+  )
+  # check for NAs
+  with(cerResPostSurveyDT,
+       table(baCompletedPostSurvey,question9002groups, useNA = "always")
+  )
+  # globalise 
+  cerResPostSurveyDT <<- cerResPostSurveyDT
+}
+
+loadArchrResults <- function() {
+  cerArchrDT <<- as.data.table(
+    read.dta(archrCensus2022)
+  )
+  setkey(cerArchrDT, ID)
+}
+
+#### Controller ----
+loadConsumptionData()
+loadPreSurvey()
+loadPostSurvey()
+loadArchrResults()
 
 # create a small subset of the pre trial survey
 cerResPreSurveyDTred <- cerResPreSurveyDT[,.(ID,
                                              baCompletedPreSurvey,
                                              baHeat,
-                                             baNpeople)]
+                                             baHotWater,
+                                             baNpeople,
+                                             ba_empl)]
 
-# Load post-trial survey ----
-cerResPostSurvey <- paste0(
-  cerPath,dPath,"Smart meters Residential post-trial survey data.dta"
-)
-cerResPostSurveyDT <- as.data.table(
-  read.dta(cerResPostSurvey)
-)
-setkey(cerResPostSurveyDT, ID)
-cerResPostSurveyDT$baCompletedPostSurvey <- 1
-cerResPostSurveyDT$baCompletedPostSurvey <- factor(cerResPostSurveyDT$baCompletedPostSurvey,
-                                                 labels = c(
-                                                   "Post-trial survey"
-                                                 )
-)
-# check for NAs
-with(cerResPostSurveyDT,
-     table(baCompletedPostSurvey,question9002groups, useNA = "always")
-)
+
 # create a small subset of the post trial survey
 cerResPostSurveyDTred <- cerResPostSurveyDT[,.(ID,baCompletedPostSurvey)]
 
@@ -135,94 +292,37 @@ setkey(cerSampleAllocDT, ID)
 # change the code name to avoid clashes
 cerSampleAllocDT$ba_allocation_code <- cerSampleAllocDT$Code
 cerSampleAllocDT$ba_allocation_code <- factor(cerSampleAllocDT$ba_allocation_code,
-       labels = c(
-         "Residential",
-         "SME",
-         "Other"
-       )
-       )
-
-# Load Oct 2009 consumption data ----
-cerOct09 <- paste0(
-  cerPath,dPath,"CER_October_2009_residential.csv"
-)
-cerOct09DT <- fread(cerOct09)
-setkey(cerOct09DT, ID)
-
-# Check we just have residential ----
-# Use Code on consumption data
-with(cerOct09DT,
-     table(Code)
+                                              labels = c(
+                                                "Residential",
+                                                "SME",
+                                                "Other"
+                                              )
 )
 
+# match checks
 # Do additional check using sample allocation file
 with(cerOct09DT[cerSampleAllocDT],
-     table(Code, ba_allocation_code, useNA = "always")
+     table(AllocCode, ba_allocation_code, useNA = "always")
 )
-# there are some 'Other', drop them using both allocation codes
-cerOct09DTres <- cerOct09DT[cerSampleAllocDT[cerSampleAllocDT$ba_allocation_code == "Residential"]]
-cerOct09DTres <- cerOct09DTres[cerOct09DTres$Code == "Residential"]
-print(paste0(
-  "Original Oct 09: ", length(cerOct09DT$ID), " records with ", uniqueN(cerOct09DT$ID), " unique IDs"
-  )
-)
-print(paste0(
-  "Clean Oct 09: ", length(cerOct09DTres$ID), " records with ", uniqueN(cerOct09DTres$ID), " unique IDs"
-  )
-)
-
-# drop tables we don't need
-cerOct09DT <- NULL
+# Looks OK
 
 # Check for survey matches ----
 # 2009
-cerOct09DTres <- cerOct09DTres[cerResPreSurveyDTred]
-with(cerOct09DTres,
-     table(ba_allocation_code,baCompletedPreSurvey, useNA = "always")
-     )
-
-cerOct09DTres <- cerOct09DTres[ba_allocation_code == "Residential" & baCompletedPreSurvey == "Pre-trial survey"]
-print(paste0("Oct 09 IDs who both answered pre trial survey and recorded data: ", uniqueN(cerOct09DTres$ID)))
-
-# Create a useful date/time in the consumption data ----
-summary(cerOct09DTres)
-head(cerOct09DTres)
-cerOct09DTres$r_datetime <- as.POSIXct(cerOct09DTres$datetime_start, 
-                                                  tz="",
-                                                  "%Y-%m-%d %H:%M:%S")
-# check
-head(cerOct09DTres)
-
-# extract useful time elements
-cerOct09DTres$r_date <- as.Date(cerOct09DTres$r_datetime)
-cerOct09DTres$r_year <- as.POSIXlt(cerOct09DTres$r_datetime)$year # since 1900
-cerOct09DTres$r_mday <- as.POSIXlt(cerOct09DTres$r_datetime)$mday
-cerOct09DTres$r_wday <- as.POSIXlt(cerOct09DTres$r_datetime)$wday # Sunday = 0
-cerOct09DTres$r_hour <- as.POSIXlt(cerOct09DTres$r_datetime)$hour
-
-# create weekday, mid-week and weekend indicator
-cerOct09DTres$weekend <- ifelse(cerOct09DTres$r_wday == 0 | cerOct09DTres$r_wday == 6, 
-                                1, # if weekend
-                                0 # if not
-                                )
-cerOct09DTres$weekday <- ifelse(cerOct09DTres$r_wday > 0 & cerOct09DTres$r_wday < 6, 
-                                1, # if weekday
-                                0 # if not
+cerOct09DT <- cerOct09DT[cerResPreSurveyDTred]
+with(cerOct09DT,
+     table(AllocCode,baCompletedPreSurvey, useNA = "always")
 )
-cerOct09DTres$mid_week <- ifelse(cerOct09DTres$r_wday > 1 & cerOct09DTres$r_wday < 5, 
-                                1, # if Tues - Thurs
-                                0 # if not
-)
-# check
-table(cerOct09DTres$weekend, cerOct09DTres$r_wday, useNA = "always")
-table(cerOct09DTres$weekday, cerOct09DTres$r_wday, useNA = "always")
-table(cerOct09DTres$mid_week, cerOct09DTres$r_wday, useNA = "always")
+
+cerOct09DT <- cerOct09DT[AllocCode == "Residential" & baCompletedPreSurvey == "Completed pre-trial survey"]
+print(paste0("Oct 09 IDs who both answered pre trial survey and recorded data: ", uniqueN(cerOct09DT$ID)))
+
+# Linkage and analysis ----
 
 # Descriptives for Table 1 (Table 1) ----
 # Pre-trial survey completions:
 uniqueN(cerResPreSurveyDTred$ID)
 # Number of households in residential data:
-uniqueN(cerOct09DTres$ID)
+uniqueN(cerOct09DT$ID)
 # Post-trial survey completions:
 uniqueN(cerResPostSurveyDTred$ID)
 # Number of households who completed both surveys
@@ -231,21 +331,45 @@ table(cerSurveysDT$baCompletedPreSurvey,cerSurveysDT$baCompletedPostSurvey, useN
 
 # Descriptive statistics for mid-week (Table 2)
 # half hour level - all
-describe(cerOct09DTres[mid_week == 1, kWh])
+describe(cerOct09DT[mid_week == 1, kWh])
 # baseload 02:00 - 05:00
-describe(cerOct09DTres[mid_week == 1 & r_hour >= 2 & r_hour <= 5, 
+describe(cerOct09DT[mid_week == 1 & r_hour >= 2 & r_hour <= 5, 
                        kWh
                        ]
          )
 # evening peak 17:00 - 20:00
-describe(cerOct09DTres[mid_week == 1 & r_hour >= 16 & r_hour <= 20,
+describe(cerOct09DT[mid_week == 1 & r_hour >= 16 & r_hour <= 20,
                        kWh
                        ]
          )
-# Descriptive statistics for mid-week (Table 3 - new)
 
+# daily summaries
+octSummarybyDateDT <- cerOct09DT[mid_week == 1,
+                                 .(
+                                   N = length(kWh), # n half hour records
+                                   Sum = sum(kWh, na.rm = TRUE)  # remove NAs
+                                 ),
+                                 by = .(ID,r_date,baHeat, baHotWater)
+                                 ][order(ID,r_date)]
+
+summary(octSummarybyDateDT)
+describe(octSummarybyDateDT$Sum)
+octSummarybyDateDT[,
+                   .(
+                     Mean_daily_total = mean(Sum)
+                   ),
+                   by = baHeat
+][order(baHeat)]
+
+# test heat differences
+boxplot(octSummarybyDateDT$Sum~octSummarybyDateDT$baHeat)
+# remember skew!
+#diff_heat <- kruskal.test(Sum~baHeat, data = octSummarybyDateDT, na.action = na.omit )
+#summary(diff_heat)
+
+# Descriptive statistics for mid-week (Table 3 - new)
 # by number of people
-cerOct09DTres[mid_week == 1,
+cerOct09DT[mid_week == 1,
               .(
                 N_hh = uniqueN(ID), # number of households in this joined table
                 N = length(kWh), # n half hour records
@@ -261,20 +385,10 @@ cerOct09DTres[mid_week == 1,
               by = baNpeople,
               ][order(baNpeople)]
 
-# daily summaries
-octSummarybyDateDT <- cerOct09DTres[mid_week == 1,
-              .(
-                N = length(kWh), # n half hour records
-                Sum = sum(kWh, na.rm = TRUE)  # remove NAs
-              ),
-              by = .(ID,r_date)
-              ][order(ID,r_date)]
 
-describe(octSummarybyDateDT$Sum)
-summary(octSummarybyDateDT)
 
 # by heating type (not used in table)
-cerOct09DTres[mid_week == 1,
+cerOct09DT[mid_week == 1,
               .(
                 N_hh = uniqueN(ID), # number of households in this joined table (survey + consumption data)
                 N = length(kWh), # n half hour records
@@ -290,7 +404,76 @@ cerOct09DTres[mid_week == 1,
               by = baHeat,
               ][order(baHeat)] # order results
 
-# test heat differences
-# remember skew!
-#diff_heat <- kruskal.test(kWh ~baHeat, data = cerOct09DTres[mid_week == 1], na.action = na.omit )
-#summary(diff_heat)
+# box plot to investigate differences by heat type
+boxplot(octSummarybyDateDT$Sum~octSummarybyDateDT$baHeat)
+# ggplot version
+boxHeat <- ggplot(data = octSummarybyDateDT, 
+       aes(baHeat, Sum)
+       )
+boxHeat + geom_boxplot()
+ggsave(paste0(rPath,"boxHeat.png"), width = 10, height = 10)
+
+# by hot water heating type (not used in table)
+cerOct09DT[mid_week == 1,
+           .(
+             N_hh = uniqueN(ID), # number of households in this joined table (survey + consumption data)
+             N = length(kWh), # n half hour records
+             Sum = sum(kWh, na.rm = TRUE),  # remove NAs
+             Mean = mean(kWh, na.rm = TRUE),
+             sd = sd(kWh, na.rm = TRUE),
+             median = median(kWh, na.rm = TRUE),
+             min = min(kWh, na.rm = TRUE),
+             max = max(kWh, na.rm = TRUE),
+             skew = skew(kWh, na.rm = TRUE),
+             kurtosi = kurtosi(kWh, na.rm = TRUE)
+           ),
+           by = baHotWater,
+           ][order(baHotWater)] # order results
+
+# ggplot version
+boxHotWater <- ggplot(data = octSummarybyDateDT, 
+                  aes(baHotWater, Sum)
+)
+boxHotWater + geom_boxplot()
+ggsave(paste0(rPath,"boxHotWater.png"), width = 10, height = 10)
+
+# Analysis of autocorrelation coefficients ####
+# These were calculated using STATA and then aggregated, see
+# https://github.com/dataknut/CER/blob/master/Census2022-CER-calculate-AR.do
+
+cerArchrDT <- cerArchrDT[cerResPreSurveyDTred]
+# summary of archr by lag up to lag 49 (for Figure 2)
+cerArchrDT[lag_id == "mid-week" & lag < 49,
+           .(
+             Mean = mean(archr, na.rm = TRUE),
+             sd = sd(archr, na.rm = TRUE),
+             median = median(archr, na.rm = TRUE),
+             min = min(archr, na.rm = TRUE),
+             max = max(archr, na.rm = TRUE),
+             skew = skew(archr, na.rm = TRUE),
+             kurtosi = kurtosi(archr, na.rm = TRUE)
+           ),
+           by = lag,
+           ][order(lag)] # order results
+
+archByEmpl <- cerArchrDT[lag_id == "mid-week" & lag == 36,
+           .(
+             Mean = mean(archr, na.rm = TRUE),
+             sd = sd(archr, na.rm = TRUE),
+             median = median(archr, na.rm = TRUE),
+             min = min(archr, na.rm = TRUE),
+             max = max(archr, na.rm = TRUE),
+             skew = skew(archr, na.rm = TRUE),
+             kurtosi = kurtosi(archr, na.rm = TRUE)
+           ),
+           by = ba_empl,
+           ][order(ba_empl)] # order results
+
+print("# Autocorrelation coefficients (summary by employment for lag == 36)")
+archByEmpl
+
+boxArchByEmpl <- ggplot(data = cerArchrDT[lag_id == "mid-week" & lag == 36], 
+                      aes(ba_empl, archr)
+)
+boxArchByEmpl + geom_boxplot()
+ggsave(paste0(rPath,"boxArchByEmpl.png"), width = 10, height = 10)
