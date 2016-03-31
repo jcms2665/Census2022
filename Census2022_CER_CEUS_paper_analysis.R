@@ -13,10 +13,10 @@
 
 # In addition the paper uses:
 
-# Multilevel regression results calculated using:
+# Multilevel regression results (Table 7) calculated using:
 # https://github.com/dataknut/CER/blob/master/Census2022-CER-mixed_model_0910.R
 
-# Logistic regression results calculated using:
+# Logistic regression results (Table 8 & 9) calculated using:
 # https://github.com/dataknut/CER/blob/master/Census2022-CER_regP_48_CLUSTER_std-1-5-15.R
 
 # This work was funded by RCUK through the ESRC's Transformative Social Science Programme via the
@@ -318,7 +318,7 @@ print(paste0("Oct 09 IDs who both answered pre trial survey and recorded data: "
 
 # Linkage and analysis ----
 
-# Descriptives for Table 1 (Table 1) ----
+# Descriptives for Table 1 ----
 # Pre-trial survey completions:
 uniqueN(cerResPreSurveyDTred$ID)
 # Number of households in residential data:
@@ -329,7 +329,7 @@ uniqueN(cerResPostSurveyDTred$ID)
 cerSurveysDT <- cerResPreSurveyDTred[cerResPostSurveyDTred]
 table(cerSurveysDT$baCompletedPreSurvey,cerSurveysDT$baCompletedPostSurvey, useNA = "always")
 
-# Descriptive statistics for mid-week (Table 2)
+# Descriptive statistics for mid-week (Table 2) ----
 # half hour level - all
 describe(cerOct09DT[mid_week == 1, kWh])
 # baseload 02:00 - 05:00
@@ -343,7 +343,7 @@ describe(cerOct09DT[mid_week == 1 & r_hour >= 16 & r_hour <= 20,
                        ]
          )
 
-# daily summaries
+# daily summaries for use in tables
 octSummarybyDateDT <- cerOct09DT[mid_week == 1,
                                  .(
                                    N = length(kWh), # n half hour records
@@ -359,15 +359,13 @@ octSummarybyDateDT[,
                      Mean_daily_total = mean(Sum)
                    ),
                    by = baHeat
-][order(baHeat)]
+][order(baHeat)] # for use in discussion of affect of heat types
 
-# test heat differences
-boxplot(octSummarybyDateDT$Sum~octSummarybyDateDT$baHeat)
 # remember skew!
 #diff_heat <- kruskal.test(Sum~baHeat, data = octSummarybyDateDT, na.action = na.omit )
 #summary(diff_heat)
 
-# Descriptive statistics for mid-week (Table 3 - new)
+# Descriptive statistics for mid-week (Table 3 - new) ----
 # by number of people
 cerOct09DT[mid_week == 1,
               .(
@@ -437,7 +435,44 @@ boxHotWater <- ggplot(data = octSummarybyDateDT,
 boxHotWater + geom_boxplot()
 ggsave(paste0(rPath,"boxHotWater.png"), width = 10, height = 10)
 
-# Analysis of autocorrelation coefficients ####
+# kwh by time of day for Fig 1 ----
+print("Paid work")
+cerOct09DT[mid_week == 1 & ba_empl == "paid_work",
+           .(
+             Mean = mean(kWh, na.rm = TRUE),
+             sd = sd(kWh, na.rm = TRUE)
+           ),
+           by = r_hour,
+           ][order(r_hour)] # order results
+
+print("Unemployed")
+cerOct09DT[mid_week == 1 & ba_empl == "unemployed",
+           .(
+             Mean = mean(kWh, na.rm = TRUE),
+             sd = sd(kWh, na.rm = TRUE)
+           ),
+           by = r_hour,
+           ][order(r_hour)] # order results
+
+print("Retired")
+cerOct09DT[mid_week == 1 & ba_empl == "retired",
+           .(
+             Mean = mean(kWh, na.rm = TRUE),
+             sd = sd(kWh, na.rm = TRUE)
+           ),
+           by = r_hour,
+           ][order(r_hour)] # order results
+
+print("Carer")
+cerOct09DT[mid_week == 1 & ba_empl == "carer",
+           .(
+             Mean = mean(kWh, na.rm = TRUE),
+             sd = sd(kWh, na.rm = TRUE)
+           ),
+           by = r_hour,
+           ][order(r_hour)] # order results
+
+# Analysis of autocorrelation coefficients - for Model 2.3 ----
 # These were calculated using STATA and then aggregated, see
 # https://github.com/dataknut/CER/blob/master/Census2022-CER-calculate-AR.do
 
@@ -474,6 +509,7 @@ archByEmpl
 
 boxArchByEmpl <- ggplot(data = cerArchrDT[lag_id == "mid-week" & lag == 36], 
                       aes(ba_empl, archr)
-)
+                      ) # for discussion of model 2.3
+
 boxArchByEmpl + geom_boxplot()
 ggsave(paste0(rPath,"boxArchByEmpl.png"), width = 10, height = 10)
