@@ -67,45 +67,6 @@ with(cerResPreSurveyDT,
      table(baCompletedPreSurvey,question200pleaserecordsexf, useNA = "always")
 )
 
-# create heating variable
-cerResPreSurveyDT$baHeat <- ifelse(cerResPreSurveyDT$question470whichofthefollow == 1,
-                                   "Electricity_storage",
-                                   NA)
-cerResPreSurveyDT$baHeat <- ifelse(cerResPreSurveyDT$aq == 1,
-                                   "Electricity_plug_in",
-                                   cerResPreSurveyDT$baHeat)
-cerResPreSurveyDT$baHeat <- ifelse(cerResPreSurveyDT$ar == 1,
-                                   "Gas",
-                                   cerResPreSurveyDT$baHeat)
-cerResPreSurveyDT$baHeat <- ifelse(cerResPreSurveyDT$as == 1,
-                                   "Oil",
-                                   cerResPreSurveyDT$baHeat)
-cerResPreSurveyDT$baHeat <- ifelse(cerResPreSurveyDT$at == 1,
-                                   "Solid_fuels",
-                                   cerResPreSurveyDT$baHeat)
-cerResPreSurveyDT$baHeat <- ifelse(cerResPreSurveyDT$au == 1,
-                                   "Renewables",
-                                   cerResPreSurveyDT$baHeat)
-cerResPreSurveyDT$baHeat <- ifelse(cerResPreSurveyDT$av == 1,
-                                   "Other",
-                                   cerResPreSurveyDT$baHeat)
-# create number of people variable
-cerResPreSurveyDT$baNpeople[cerResPreSurveyDT$question410whatbestdescribes == 1] <- "1"
-cerResPreSurveyDT$baNpeople[cerResPreSurveyDT$question420howmanypeopleove == 1] <- "2"
-cerResPreSurveyDT$baNpeople[cerResPreSurveyDT$question420howmanypeopleove == 2] <- "3"
-cerResPreSurveyDT$baNpeople[cerResPreSurveyDT$question420howmanypeopleove == 3] <- "4"
-cerResPreSurveyDT$baNpeople[cerResPreSurveyDT$question420howmanypeopleove >= 4] <- "5+"
-
-with(cerResPreSurveyDT,
-     table(baNpeople,baCompletedPreSurvey)
-)
-
-# create a small subset of the pre trial survey
-cerResPreSurveyDTred <- cerResPreSurveyDT[,.(ID,
-                                             baCompletedPreSurvey,
-                                             baHeat,
-                                             baNpeople)]
-
 # load post-trial survey
 cerResPostSurvey <- paste0(
   cerPath,dPath,"Smart meters Residential post-trial survey data.dta"
